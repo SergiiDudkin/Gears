@@ -1,11 +1,11 @@
 import numpy as np
 from plots import simple_plot, multiple_plot
 from curves import involute, epitrochoid, epitrochoid_flat
-from gear_params import STANDARD_PRESSURE_ANGLE, get_gear_params, print_gear_params
+from gear_params import STANDARD_PRESSURE_ANGLE, get_gear_params, print_gear_params, GearParams
 from transforms import mirror, make_angrad_func, cartesian_to_polar, populate_circ
-from tooth_generator import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point
+from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point
 
-function = 'build_tooth'
+function = 'GearParams'
 
 if function == 'involute':
     # t_s = np.arange(0, 4, 0.001)
@@ -142,5 +142,12 @@ if function == 'get_epitrochoid_flat_point':
     inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
     print(get_epitrochoid_flat_point(pitch_diameter, dedendum, inv_epitr_flat))
 
+
+if function == 'GearParams':
+    module = 10
+    tooth_num = 18
+    params = GearParams(tooth_num=18, module=10, de_coef=1)
+    params.diameters_to_radii()
+    print(params)
 
 #if function == '':
