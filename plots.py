@@ -1,9 +1,9 @@
 from matplotlib import pyplot as plt
 
 
-def simple_plot(x_vals, y_vals, title='Figure 1'):
+def simple_plot(x_vals, y_vals, title='Figure 1', marker=None, markersize=None):
     # Build plot
-    plt.plot(x_vals, y_vals, color='b', linewidth=0.5)
+    plt.plot(x_vals, y_vals, color='b', linewidth=0.5, marker=marker, markersize=markersize)
     plt.get_current_fig_manager().set_window_title(title)
     fig = plt.figure(1)
     fig.set_tight_layout(True)
