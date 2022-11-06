@@ -3,9 +3,9 @@ from plots import simple_plot, multiple_plot
 from curves import involute, epitrochoid, epitrochoid_flat
 from gear_params import STANDARD_PRESSURE_ANGLE, get_gear_params, print_gear_params, GearParams
 from transforms import mirror, make_angrad_func, cartesian_to_polar, populate_circ
-from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point
+from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, Tooth
 
-function = 'GearParams'
+function = 'Tooth'
 
 if function == 'involute':
     # t_s = np.arange(0, 4, 0.001)
@@ -150,4 +150,21 @@ if function == 'GearParams':
     params.diameters_to_radii()
     print(params)
 
+
+if function == 'Tooth':
+    tooth = Tooth(tooth_num=18, module=10, de_coef=1)
+    # print(tooth)
+    points = tooth.get_gear_profile()
+    simple_plot(*points, 'Gear profile')
+    # simple_plot(*tooth.half_tooth_profile, 'Half tooth profile', marker='+', markersize=5)
+
+
 #if function == '':
+
+
+
+
+
+
+
+
