@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image, ImageTk
 
 
+
 class GearsApp(Tk):
     """Gears app with GUI"""
     def __init__(self):
@@ -16,7 +17,10 @@ class GearsApp(Tk):
         # Window setup
         self.title('GEARS')
         self.geometry('1000x600')
+        self.configure(bg="red")
         self.resizable(True, True)
+        self.style = ttk.Style()
+        self.style.theme_use('classic')
 
         # Frames
         main_frame = Frame(self)
@@ -32,12 +36,21 @@ class GearsApp(Tk):
         self.some_btn = Button(tabs_frame, command=self.button_cmd, text='Some button')
         self.some_btn.pack(side=TOP)
 
+        # style.configure('TButton', background='green')
+        self.style.configure('My.TButton', background='red', foreground='green', width=30, height=20, borderwidth=3, focusthickness=10,
+                        focuscolor='blue')
+        self.extra_btn = ttk.Button(tabs_frame, command=self.button_cmd, text='Extra button', style='My.TButton')
+        self.extra_btn.pack(side=TOP)
+
         # Plots frame
         plots_frame = Frame(main_frame)
         plots_frame.pack(side=LEFT, fill=BOTH, expand=True)
 
+
+        self.style.configure('Clr.TLabelframe', background='green')
+
         self.globplot_frame = ttk.LabelFrame(plots_frame, labelwidget=Label(plots_frame, text='Historical data',
-                                                                       font=('Times', 10, 'italic')), labelanchor=N)
+                                                                       font=('Times', 10, 'italic')), labelanchor=N, style='Clr.TLabelframe')
         self.globplot_frame.pack(padx=2, pady=2, fill=BOTH, expand=True)
 
         # Canvas
@@ -48,7 +61,7 @@ class GearsApp(Tk):
         self.data, = self.ax.plot([], [], color='b', linewidth=1)
         self.plot_data([0, 1.2, 1.8, 3], [0, 0.8, 2.2, 3])
 
-        # Toolbat
+        # Toolbar
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.globplot_frame, pack_toolbar=False)
         self.toolbar.pack(side=BOTTOM, padx=2, pady=2, fill=X)
 

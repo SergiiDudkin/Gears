@@ -2,8 +2,9 @@ import numpy as np
 from plots import simple_plot, multiple_plot
 from curves import involute, epitrochoid, epitrochoid_flat
 from gear_params import STANDARD_PRESSURE_ANGLE, get_gear_params, print_gear_params, GearParams
-from transforms import mirror, make_angrad_func, cartesian_to_polar, populate_circ
-from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, Tooth
+from transforms import mirror, make_angrad_func, cartesian_to_polar, populate_circ, equidistant
+# from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, Tooth
+from tooth_profile import Tooth
 
 function = 'Tooth'
 
@@ -74,6 +75,20 @@ if function == 'epitrochoid_flat':
     data4 = (epitrochoid_flat(t_s, R, l, a0=2), 'a0 = 2')
     multiple_plot([data0, data1, data2, data3, data4])
 
+
+if function == 'epitrochoids_both':
+    t_s = np.arange(-1, 1, 0.01)
+    R = 4
+
+    r = 2
+    d = 3
+    data0 = (epitrochoid(t_s, R, r, d), 'epitrochoid')
+
+    l = d - r
+    data1 = (epitrochoid_flat(t_s, R, l), 'epitrochoid_flat')
+
+    multiple_plot([data0, data1])
+
 if function == 'make_angrad_func':
     t = 100
     r = 2
@@ -106,41 +121,41 @@ if function == 'populate_circ':
     out_x, out_y = populate_circ(x_s, y_s, num)
     simple_plot(out_x, out_y, title='Figure 1')
 
-if function == 'get_inv_epitr_flat':
-    gear_params = get_gear_params(module=10, tooth_num=100)
-    print_gear_params(*gear_params)
-    pitch_diameter, outside_diameter, root_diameter, base_diameter, addendum, dedendum = gear_params
-    inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
-    print(f'inv_epitr_flat: {inv_epitr_flat}, angle: {angle}, {angle >= np.pi / 2}')
-    # print(inv_epitr_flat > base_diameter)
-
-if function == 'get_involute_points':
-    gear_params = get_gear_params(module=10, tooth_num=30)
-    print_gear_params(*gear_params)
-    pitch_diameter, outside_diameter, root_diameter, base_diameter, addendum, dedendum = gear_params
-    inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
-    involute_points = get_involute_points(base_diameter, inv_epitr_flat, pitch_diameter, outside_diameter)
-    print(involute_points)
-
-
-if function == 'build_tooth':
-    tooth_num = 18
-    gear_params = get_gear_params(module=10, tooth_num=tooth_num)
-    # print_gear_params(*gear_params)
-    pitch_diameter, outside_diameter, root_diameter, base_diameter, addendum, dedendum = gear_params
-    inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
-    involute_points = get_involute_points(base_diameter, inv_epitr_flat, pitch_diameter, outside_diameter)
-    points = build_tooth(root_diameter, involute_points, pitch_diameter, dedendum, inv_epitr_flat, base_diameter, tooth_num, outside_diameter)
-    points = populate_circ(*points, tooth_num)
-    simple_plot(*points, 'Involute')
-
-
-if function == 'get_epitrochoid_flat_point':
-    gear_params = get_gear_params(module=10, tooth_num=30)
-    # print_gear_params(*gear_params)
-    pitch_diameter, outside_diameter, root_diameter, base_diameter, addendum, dedendum = gear_params
-    inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
-    print(get_epitrochoid_flat_point(pitch_diameter, dedendum, inv_epitr_flat))
+# if function == 'get_inv_epitr_flat':
+#     gear_params = get_gear_params(module=10, tooth_num=100)
+#     print_gear_params(*gear_params)
+#     pitch_diameter, outside_diameter, root_diameter, base_diameter, addendum, dedendum = gear_params
+#     inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
+#     print(f'inv_epitr_flat: {inv_epitr_flat}, angle: {angle}, {angle >= np.pi / 2}')
+#     # print(inv_epitr_flat > base_diameter)
+#
+# if function == 'get_involute_points':
+#     gear_params = get_gear_params(module=10, tooth_num=30)
+#     print_gear_params(*gear_params)
+#     pitch_diameter, outside_diameter, root_diameter, base_diameter, addendum, dedendum = gear_params
+#     inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
+#     involute_points = get_involute_points(base_diameter, inv_epitr_flat, pitch_diameter, outside_diameter)
+#     print(involute_points)
+#
+#
+# if function == 'build_tooth':
+#     tooth_num = 18
+#     gear_params = get_gear_params(module=10, tooth_num=tooth_num)
+#     # print_gear_params(*gear_params)
+#     pitch_diameter, outside_diameter, root_diameter, base_diameter, addendum, dedendum = gear_params
+#     inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
+#     involute_points = get_involute_points(base_diameter, inv_epitr_flat, pitch_diameter, outside_diameter)
+#     points = build_tooth(root_diameter, involute_points, pitch_diameter, dedendum, inv_epitr_flat, base_diameter, tooth_num, outside_diameter)
+#     points = populate_circ(*points, tooth_num)
+#     simple_plot(*points, 'Involute')
+#
+#
+# if function == 'get_epitrochoid_flat_point':
+#     gear_params = get_gear_params(module=10, tooth_num=30)
+#     # print_gear_params(*gear_params)
+#     pitch_diameter, outside_diameter, root_diameter, base_diameter, addendum, dedendum = gear_params
+#     inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
+#     print(get_epitrochoid_flat_point(pitch_diameter, dedendum, inv_epitr_flat))
 
 
 if function == 'GearParams':
@@ -153,11 +168,18 @@ if function == 'GearParams':
 
 if function == 'Tooth':
     tooth = Tooth(tooth_num=18, module=10, de_coef=1)
+    tooth.get_sector_profile(0, np.pi)
     # print(tooth)
     points = tooth.get_gear_profile()
     simple_plot(*points, 'Gear profile')
-    # simple_plot(*tooth.half_tooth_profile, 'Half tooth profile', marker='+', markersize=5)
+    # simple_plot(*tooth.half_tooth_profile, 'Half tooth profile', marker='o', markersize=1)
 
+
+
+if function == 'equidistant':
+    # equidistant(involute, 0, 2, 0.1, 0.1, r=2)
+    # simple_plot(*equidistant(involute, 0, 2, 0.1, 0.0001, r=2), 'Involute', marker='x', markersize=3)
+    simple_plot(*equidistant(epitrochoid_flat, 0, 2, 0.1, 0.1, R=4, l=1), 'Involute', marker='x', markersize=3)
 
 #if function == '':
 

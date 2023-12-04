@@ -5,14 +5,15 @@ def circle(t, r, a0=0):
     t_ = t + a0
     x = r * np.cos(t_)
     y = r * np.sin(t_)
-    return x, y
+    return np.array([x, y])
 
 
 def involute(t, r, a0=0):
     t_ = t + a0
     x = r * (np.cos(t_) + t * np.sin(t_))
     y = r * (np.sin(t_) - t * np.cos(t_))
-    return x, y
+    # return x, y
+    return np.array([x, y])
 
 
 def epitrochoid(t, R, r, d, a0=0):

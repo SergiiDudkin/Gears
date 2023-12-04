@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.interpolate import interp1d
 
 
 def mirror(poi, seg_st, seg_en):
@@ -19,9 +20,9 @@ def mirror(poi, seg_st, seg_en):
     return mirror_poi
 
 
-def rotate(x, y, angle):
-    """Rotate points around the origin."""
-    return x * np.cos(angle) - y * np.sin(angle), x * np.sin(angle) + y * np.cos(angle)
+# def rotate(x, y, angle):
+#     """Rotate points around the origin."""
+#     return x * np.cos(angle) - y * np.sin(angle), x * np.sin(angle) + y * np.cos(angle)
 
 
 def angle_vec(vec0, vec1):  # Not tested! Not used here!
@@ -71,7 +72,6 @@ def make_angrad_func(func):
             t_curr = np.mean([t_min, t_max])
             x, y = func(t_curr, *args, **kwargs)
             r_curr = np.linalg.norm([x, y])
-            # print(f't_curr {t_curr}, r_curr {r_curr}, x {x}, y{y}')
             if r_curr == rad or not (t_min < t_curr < t_max):
                 break
             if r_curr < rad:
@@ -80,13 +80,67 @@ def make_angrad_func(func):
                 t_max = t_curr
         else:
             print('WARNING! Number of iteration exceeded the limit.')
-        # print(args)
-        # print(kwargs)
 
         ang = np.arctan2(y, x)  # Compute angle
         return ang, x, y, t_curr
 
     return angrad_func
+
+
+# def populate_circ(in_x, in_y, num):
+#     """
+#     Multiply points and place them around the origin.
+#
+#     Args:
+#         in_x (np.ndarray): Points, x values.
+#         in_y (np.ndarray): Points, y values.
+#         num (int): Number of copies, including the original one.
+#
+#     Returns:
+#         tuple[np.ndarray, np.ndarray]: Resulting x and y values respectively.
+#     """
+#     angle_step = 2 * np.pi / num
+#     out_x, out_y = in_x, in_y
+#     for i in range(1, num):
+#         angle_step * i
+#         new_x, new_y = rotate(in_x, in_y, angle_step * i)
+#         out_x = np.concatenate((out_x, new_x))
+#         out_y = np.concatenate((out_y, new_y))
+#     return out_x, out_y
+
+
+def equidistant(func, t_st, t_en, step, tolerance, *args, **kwargs):
+    seg_num = 8
+    t_step = (t_en - t_st) / seg_num
+    t_range = np.append(np.arange(t_st, t_en, t_step)[:seg_num], t_en)
+
+    for i in range(10):
+        points = func(t_range, *args, **kwargs)
+        transposed_points = np.transpose(points)
+        xy_difs = transposed_points[1:] - transposed_points[:-1]
+        dists = [np.linalg.norm(xy_dif) for xy_dif in xy_difs]
+        if np.all(np.absolute((np.array(dists) - step) / step) <= tolerance):  # Check inaccuracy against tolerance
+            break
+        cum_dists = np.cumsum([0] + dists)
+        dist_t_interp_func = interp1d(cum_dists, t_range, kind='linear')
+        total_dist = cum_dists[-1]
+        seg_num = int(np.ceil(total_dist / step))
+        dist_step = total_dist / seg_num
+        dist_range = np.arange(dist_step, total_dist, dist_step)[:seg_num-1]
+        t_range = np.concatenate(([t_st], dist_t_interp_func(dist_range), [t_en]))
+    else:
+        print('WARNING! Number of iteration exceeded the limit.')
+
+    return points
+
+
+def stack_curves(*curves):
+    return np.hstack(tuple([line[:, 1:] if idx else line for idx, line in enumerate(curves)]))
+
+
+def rotate(x, y, angle):
+    """Rotate points around the origin."""
+    return np.array([x * np.cos(angle) - y * np.sin(angle), x * np.sin(angle) + y * np.cos(angle)])
 
 
 def populate_circ(in_x, in_y, num):
@@ -102,10 +156,20 @@ def populate_circ(in_x, in_y, num):
         tuple[np.ndarray, np.ndarray]: Resulting x and y values respectively.
     """
     angle_step = 2 * np.pi / num
-    out_x, out_y = in_x, in_y
-    for i in range(1, num):
-        angle_step * i
-        new_x, new_y = rotate(in_x, in_y, angle_step * i)
-        out_x = np.concatenate((out_x, new_x))
-        out_y = np.concatenate((out_y, new_y))
-    return out_x, out_y
+    curves = [rotate(in_x, in_y, angle_step * i) for i in range(num)]
+    return stack_curves(*curves)
+
+
+def is_within_ang(q_ang, st_ang, en_ang):
+    # if st_ang < en_ang:
+    #     res = st_ang < q_ang and q_ang <= en_ang
+    # else:
+    #     res = st_ang < q_ang or q_ang <= en_ang
+    # return res
+
+    # return st_ang < q_ang and q_ang <= en_ang if st_ang < en_ang else st_ang < q_ang or q_ang <= en_ang
+
+    # return np.where(st_ang < en_ang, (st_ang < q_ang) & (q_ang <= en_ang), (st_ang < q_ang) | (q_ang <= en_ang))
+
+    operator = np.bitwise_and if st_ang < en_ang else np.bitwise_or
+    return operator(st_ang < q_ang, q_ang <= en_ang)
