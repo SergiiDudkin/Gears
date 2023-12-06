@@ -6,6 +6,9 @@ from transforms import mirror, make_angrad_func, cartesian_to_polar, populate_ci
 # from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, Tooth
 from tooth_profile import Tooth
 
+np.set_printoptions(linewidth=1000)
+
+
 function = 'Tooth'
 
 if function == 'involute':
@@ -168,10 +171,19 @@ if function == 'GearParams':
 
 if function == 'Tooth':
     tooth = Tooth(tooth_num=18, module=10, de_coef=1)
-    tooth.get_sector_profile(0, np.pi)
+    hta = cartesian_to_polar(*tooth.half_tooth_profile)[0]
+    print(hta[-1] - hta[0])
+    fta = cartesian_to_polar(*tooth.full_tooth_profile)[0]
+    print(fta[-1] - fta[0])
+    print(fta[0], fta[-1])
+    # simple_plot(*tooth.half_tooth_profile, 'Half tooth profile')
+    # simple_plot(*tooth.full_tooth_profile, 'Full tooth profile')
+
+    sector_pts = tooth.get_sector_profile(np.pi * 0.5, np.pi * 1)
+    simple_plot(*sector_pts, 'Sector profile')
     # print(tooth)
-    points = tooth.get_gear_profile()
-    simple_plot(*points, 'Gear profile')
+    # points = tooth.get_gear_profile()
+    # simple_plot(*points, 'Gear profile')
     # simple_plot(*tooth.half_tooth_profile, 'Half tooth profile', marker='o', markersize=1)
 
 

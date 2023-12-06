@@ -31,8 +31,8 @@ def angle_vec(vec0, vec1):  # Not tested! Not used here!
     return np.arctan2(y, x)
 
 
-def cartesian_to_polar(x, y):  # Not used here!
-    ang = np.arctan2(y, x)
+def cartesian_to_polar(x, y):
+    ang = np.remainder(np.arctan2(y, x), np.pi * 2)
     rad = np.linalg.norm([x, y])
     return ang, rad
 
@@ -172,4 +172,4 @@ def is_within_ang(q_ang, st_ang, en_ang):
     # return np.where(st_ang < en_ang, (st_ang < q_ang) & (q_ang <= en_ang), (st_ang < q_ang) | (q_ang <= en_ang))
 
     operator = np.bitwise_and if st_ang < en_ang else np.bitwise_or
-    return operator(st_ang < q_ang, q_ang <= en_ang)
+    return operator(st_ang <= q_ang, q_ang < en_ang)
