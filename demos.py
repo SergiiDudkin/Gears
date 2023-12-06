@@ -172,14 +172,14 @@ if function == 'GearParams':
 if function == 'Tooth':
     tooth = Tooth(tooth_num=18, module=10, de_coef=1)
     hta = cartesian_to_polar(*tooth.half_tooth_profile)[0]
-    print(hta[-1] - hta[0])
+    # print(hta[-1] - hta[0])
     fta = cartesian_to_polar(*tooth.full_tooth_profile)[0]
-    print(fta[-1] - fta[0])
-    print(fta[0], fta[-1])
+    # print(fta[-1] - fta[0])
+    # print(fta[0], fta[-1])
     # simple_plot(*tooth.half_tooth_profile, 'Half tooth profile')
     # simple_plot(*tooth.full_tooth_profile, 'Full tooth profile')
 
-    sector_pts = tooth.get_sector_profile(np.pi * 0.5, np.pi * 1)
+    sector_pts = tooth.get_sector_profile(np.pi * 0.5, np.pi + tooth.tooth_angle / 4, tooth.tooth_angle * 0.1)
     simple_plot(*sector_pts, 'Sector profile')
     # print(tooth)
     # points = tooth.get_gear_profile()

@@ -88,9 +88,6 @@ class Tooth(GearParams):
                                   r=self.root_radius, a0=0)
 
         self.half_tooth_profile = stack_curves(points_root, points_epitrochoid_flat, points_involute, points_outside)
-        # print(self.half_tooth_profile.shape)
-
-
 
     def _build_full_tooth(self):
         seg_st = np.array([0, 0])
@@ -103,86 +100,66 @@ class Tooth(GearParams):
         """Returns the entire gear profile"""
         return populate_circ(*self.full_tooth_profile, self.tooth_num)
 
-    def get_sector_profile(self, sec_st, sec_en):
-        ang0 = cartesian_to_polar(*self.full_tooth_profile[:, 0])[0]
-        print(f'ang0: {ang0}')
+    def get_sector_profile(self, sec_st, sec_en, rot_ang=0):
+        st_tooth_idx, full_teeth_ins, en_tooth_idx = self.sortout_teeth(sec_st, sec_en, rot_ang)
+
+        if not full_teeth_ins.size and st_tooth_idx == en_tooth_idx:
+            # Case of a single tooth within the sector
+            tooth = rotate(*self.full_tooth_profile, self.tooth_angle * st_tooth_idx + rot_ang)
+            tooth_ang = cartesian_to_polar(*tooth)[0]
+            tooth_in_sector_bm = is_within_ang(tooth_ang, sec_st, sec_en)
+            pt_ins = np.nonzero(tooth_in_sector_bm)[0]
+            try:
+                sector_profile = tooth[:, pt_ins[0]: pt_ins[-1] + 1]
+            except IndexError:
+                raise ValueError('The segment is too narrow; no points inside!')
+        else:
+            # Case of multiple teeth within the sector
+            curves = []
+
+            st_tooth = self.get_term_tooth_profile(st_tooth_idx, sec_st, sec_en, rot_ang, is_en=False)
+            curves.append(st_tooth)
+
+            for full_tooth_idx in full_teeth_ins:
+                full_tooth = rotate(*self.full_tooth_profile, self.tooth_angle * full_tooth_idx + rot_ang)
+                curves.append(full_tooth)
+
+            en_tooth = self.get_term_tooth_profile(en_tooth_idx, sec_st, sec_en, rot_ang, is_en=True)
+            curves.append(en_tooth)
+
+            sector_profile = stack_curves(*curves)
+
+        return sector_profile
+
+    def sortout_teeth(self, sec_st, sec_en, rot_ang=0):
+        ang0 = cartesian_to_polar(*self.full_tooth_profile[:, 0])[0] + rot_ang
         teeth_sts = np.remainder(ang0 + self.tooth_angle * np.arange(self.tooth_num), np.pi * 2)
         teeth_ens = np.roll(teeth_sts, -1)
 
-        teeth_sts_in_sector = is_within_ang(teeth_sts, sec_st, sec_en)
-        teeth_ens_in_sector = np.roll(teeth_sts_in_sector, -1)
-
-        print(np.vstack((teeth_sts, teeth_ens)))
-
-        seg_st_within_tooth, seg_en_within_tooth = [np.array([is_within_ang(seg_edge, tooth_st, tooth_en)
+        teeth_sts_in_sector_bm = is_within_ang(teeth_sts, sec_st, sec_en)
+        teeth_ens_in_sector_bm = np.roll(teeth_sts_in_sector_bm, -1)
+        seg_st_within_tooth_bm, seg_en_within_tooth_bm = [np.array([is_within_ang(seg_edge, tooth_st, tooth_en)
                                                               for tooth_st, tooth_en
                                                               in zip(teeth_sts, teeth_ens)])
                                                     for seg_edge in (sec_st, sec_en)]
+        integer_teeth = np.logical_not(seg_st_within_tooth_bm | seg_en_within_tooth_bm)
+        full_teeth = teeth_sts_in_sector_bm & teeth_ens_in_sector_bm & integer_teeth
 
-        print(sec_st, sec_en)
-        print(np.vstack((seg_st_within_tooth, seg_en_within_tooth)).astype(np.uint8))
-
-        integer_teeth = np.logical_not(seg_st_within_tooth | seg_en_within_tooth)
-        full_teeth = teeth_sts_in_sector & teeth_ens_in_sector & integer_teeth
-        empty_teeth = np.logical_not(teeth_sts_in_sector | teeth_ens_in_sector) & integer_teeth
-
-        print(np.vstack((full_teeth, empty_teeth)).astype(np.uint8))
-
-        curves = []
-
-        st_tooth_idx = np.nonzero(seg_st_within_tooth)[0][0]
-        raw_st_tooth = rotate(*self.full_tooth_profile, self.tooth_angle * st_tooth_idx)
-        raw_st_tooth_ang = cartesian_to_polar(*raw_st_tooth)[0]
-        raw_st_tooth_in_sector = is_within_ang(raw_st_tooth_ang, sec_st, sec_en)
-        try:
-            st_pt_idx = np.nonzero(raw_st_tooth_in_sector)[0][0]
-        except IndexError:
-            st_pt_idx = -1 #raw_st_tooth.shape[1]
-        curves.append(raw_st_tooth[:, st_pt_idx:])
-
-        # print(raw_st_tooth.shape)
-        # print(st_pt_idx)
-        # print(curves[0].shape)
-        print(raw_st_tooth_ang[0], raw_st_tooth_ang[-1])
-        print(raw_st_tooth_ang[0] - raw_st_tooth_ang[-1])
-
+        st_tooth_idx = np.nonzero(seg_st_within_tooth_bm)[0][0]
         full_teeth_ins = np.nonzero(full_teeth)[0]
-        # print(full_teeth_ins)
-        while (full_teeth_ins[0] - 1) % self.tooth_num != st_tooth_idx:
-            full_teeth_ins = np.roll(full_teeth_ins, 1)
-        for full_tooth_idx in full_teeth_ins:
-            full_tooth = rotate(*self.full_tooth_profile, self.tooth_angle * full_tooth_idx)
-            curves.append(full_tooth)
+        if full_teeth_ins.size:
+            while (full_teeth_ins[0] - 1) % self.tooth_num != st_tooth_idx:
+                full_teeth_ins = np.roll(full_teeth_ins, 1)
+        en_tooth_idx = np.nonzero(seg_en_within_tooth_bm)[0][0]
 
-        en_tooth_idx = np.nonzero(seg_en_within_tooth)[0][0]
-        raw_en_tooth = rotate(*self.full_tooth_profile, self.tooth_angle * en_tooth_idx)
-        raw_en_tooth_ang = cartesian_to_polar(*raw_en_tooth)[0]
-        raw_en_tooth_in_sector = is_within_ang(raw_en_tooth_ang, sec_st, sec_en)
+        return st_tooth_idx, full_teeth_ins, en_tooth_idx
+
+    def get_term_tooth_profile(self, tooth_idx, sec_st, sec_en, rot_ang=0, is_en=False):
+        tooth = rotate(*self.full_tooth_profile, self.tooth_angle * tooth_idx + rot_ang)
+        tooth_ang = cartesian_to_polar(*tooth)[0]
+        tooth_in_sector_bm = is_within_ang(tooth_ang, sec_st, sec_en)
         try:
-            en_pt_idx = np.nonzero(raw_en_tooth_in_sector)[0][-1] + 1
+            pt_idx = np.nonzero(tooth_in_sector_bm)[0][0 - is_en] + is_en
         except IndexError:
-            en_pt_idx = 0
-        curves.append(raw_en_tooth[:, :en_pt_idx])
-
-
-        # print(st_tooth_idx, full_teeth_ins, en_tooth_idx)
-        # for curve in curves:
-        #     print(curve.shape)
-        # print(curves[0].shape)
-        # print(raw_st_tooth.shape)
-        print(teeth_sts[st_tooth_idx], teeth_ens[st_tooth_idx])
-        print(teeth_sts[en_tooth_idx], teeth_ens[en_tooth_idx])
-
-        return stack_curves(*curves)
-
-
-    # def get_term_pt_idx(self, seg_st_within_tooth, sec_st, sec_en, is_start):
-    #     st_tooth_idx = np.nonzero(seg_st_within_tooth)[0][0]
-    #     raw_st_tooth = rotate(*self.full_tooth_profile, self.tooth_angle * st_tooth_idx)
-    #     raw_st_tooth_ang = cartesian_to_polar(*raw_st_tooth)[0]
-    #     raw_st_tooth_in_sector = is_within_ang(raw_st_tooth_ang, sec_st, sec_en)
-    #     try:
-    #         pt_idx = np.nonzero(raw_st_tooth_in_sector)[0][0]
-    #     except IndexError:
-    #         pt_idx = -1
-    #     return pt_idx
+            pt_idx = -1 + is_en
+        return tooth[:, :pt_idx] if is_en else tooth[:, pt_idx:]
