@@ -18,6 +18,13 @@ class Tooth(GearParams):
         self._calc_invol_epitr_flat()
         self._build_half_tooth()
         self._build_full_tooth()
+        # self.rot_params = {
+        #     'step_cnt': 100,
+        #     'sec_st': 0,
+        #     'sec_en': np.pi,
+        #     'rot_ang': 0,
+        #     'is_acw': False
+        # }
 
     def _calc_invol_epitr_flat(self):
         self.invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
@@ -129,6 +136,9 @@ class Tooth(GearParams):
 
             sector_profile = stack_curves(*curves)
 
+        # last_ang = cartesian_to_polar(*sector_profile[:, -1])[0]
+        # print(last_ang)
+
         return sector_profile
 
     def sortout_teeth(self, sec_st, sec_en, rot_ang=0):
@@ -137,6 +147,7 @@ class Tooth(GearParams):
         teeth_ens = np.roll(teeth_sts, -1)
 
         teeth_sts_in_sector_bm = is_within_ang(teeth_sts, sec_st, sec_en)
+        teeth_sts_in_sector_bm |= teeth_sts == sec_en  # Bug fix for missing tooth
         teeth_ens_in_sector_bm = np.roll(teeth_sts_in_sector_bm, -1)
         seg_st_within_tooth_bm, seg_en_within_tooth_bm = [np.array([is_within_ang(seg_edge, tooth_st, tooth_en)
                                                               for tooth_st, tooth_en
@@ -163,3 +174,18 @@ class Tooth(GearParams):
         except IndexError:
             pt_idx = -1 + is_en
         return tooth[:, :pt_idx] if is_en else tooth[:, pt_idx:]
+
+    def __iter__(self):
+        ang_step = self.tooth_angle / self.rot_params['step_cnt']
+        dir_ = self.rot_params['is_acw'] * 2 - 1  # Bool to sign
+        while True:
+            self.rot_params['i'] = (self.rot_params['i'] + 1) % self.rot_params['step_cnt']
+            yield self.get_sector_profile(self.rot_params['sec_st'], self.rot_params['sec_en'],
+                                          (ang_step * self.rot_params['i'] + self.rot_params['rot_ang']) * dir_)
+
+    def __call__(self, step_cnt=100, sec_st=0, sec_en=np.pi, rot_ang=0, is_acw=False):
+        self.rot_params = locals().copy()
+        self.rot_params.pop('self')
+        self.rot_params['i'] = self.rot_params['step_cnt'] - 1
+        return self
+
