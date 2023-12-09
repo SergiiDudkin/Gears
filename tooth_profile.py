@@ -7,7 +7,7 @@ STEP = 0.1
 TOLERANCE = 0.1
 
 
-class Tooth(GearParams):
+class HalfTooth(GearParams):
     def __init__(self, tooth_num, module, cutter_teeth_num=float('inf'), pressure_angle=STANDARD_PRESSURE_ANGLE,
                  ad_coef=STANDARD_ADDENDUM_COEF, de_coef=STANDARD_DEDENDUM_COEF, step=STEP, tolerance=TOLERANCE):
         super().__init__(tooth_num, module, pressure_angle, ad_coef, de_coef)
@@ -17,14 +17,6 @@ class Tooth(GearParams):
         self.diameters_to_radii()
         self._calc_invol_epitr_flat()
         self._build_half_tooth()
-        self._build_full_tooth()
-        # self.rot_params = {
-        #     'step_cnt': 100,
-        #     'sec_st': 0,
-        #     'sec_en': np.pi,
-        #     'rot_ang': 0,
-        #     'is_acw': False
-        # }
 
     def _calc_invol_epitr_flat(self):
         self.invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
@@ -96,23 +88,35 @@ class Tooth(GearParams):
 
         self.half_tooth_profile = stack_curves(points_root, points_epitrochoid_flat, points_involute, points_outside)
 
+
+class GearSector:
+    def __init__(self, halftooth0, halftooth1, step_cnt=100, sector=(0, np.pi), rot_ang=0, is_acw=False):
+        self.ht0 = halftooth0
+        self.ht1 = halftooth1
+        self.step_cnt = step_cnt
+        self.sec_st, self.sec_en = sector
+        self.rot_ang = rot_ang
+        self.is_acw = is_acw
+
+        self.i = self.step_cnt - 1
+        self._build_full_tooth()
+
     def _build_full_tooth(self):
-        seg_st = np.array([0, 0])
-        seg_en = np.array([np.cos(-self.quater_angle), np.sin(-self.quater_angle)])
-        reflected = np.transpose([mirror(point, seg_st, seg_en) for point in np.transpose(self.half_tooth_profile)])
-        self.full_tooth_profile = stack_curves(reflected[:, ::-1], self.half_tooth_profile)
-        return self.full_tooth_profile
+        sec_st = np.array([0, 0])
+        sec_en = np.array([np.cos(-self.ht0.quater_angle), np.sin(-self.ht0.quater_angle)])
+        reflected = np.transpose([mirror(point, sec_st, sec_en) for point in np.transpose(self.ht1.half_tooth_profile)])
+        self.full_tooth_profile = stack_curves(reflected[:, ::-1], self.ht0.half_tooth_profile)
 
     def get_gear_profile(self):
         """Returns the entire gear profile"""
-        return populate_circ(*self.full_tooth_profile, self.tooth_num)
+        return populate_circ(*self.full_tooth_profile, self.ht0.tooth_num)
 
     def get_sector_profile(self, sec_st, sec_en, rot_ang=0):
-        st_tooth_idx, full_teeth_ins, en_tooth_idx = self.sortout_teeth(sec_st, sec_en, rot_ang)
+        st_tooth_idx, full_teeth_ins, en_tooth_idx = self._sortout_teeth(sec_st, sec_en, rot_ang)
 
         if not full_teeth_ins.size and st_tooth_idx == en_tooth_idx:
             # Case of a single tooth within the sector
-            tooth = rotate(*self.full_tooth_profile, self.tooth_angle * st_tooth_idx + rot_ang)
+            tooth = rotate(*self.full_tooth_profile, self.ht0.tooth_angle * st_tooth_idx + rot_ang)
             tooth_ang = cartesian_to_polar(*tooth)[0]
             tooth_in_sector_bm = is_within_ang(tooth_ang, sec_st, sec_en)
             pt_ins = np.nonzero(tooth_in_sector_bm)[0]
@@ -124,26 +128,23 @@ class Tooth(GearParams):
             # Case of multiple teeth within the sector
             curves = []
 
-            st_tooth = self.get_term_tooth_profile(st_tooth_idx, sec_st, sec_en, rot_ang, is_en=False)
+            st_tooth = self._get_term_tooth_profile(st_tooth_idx, sec_st, sec_en, rot_ang, is_en=False)
             curves.append(st_tooth)
 
             for full_tooth_idx in full_teeth_ins:
-                full_tooth = rotate(*self.full_tooth_profile, self.tooth_angle * full_tooth_idx + rot_ang)
+                full_tooth = rotate(*self.full_tooth_profile, self.ht0.tooth_angle * full_tooth_idx + rot_ang)
                 curves.append(full_tooth)
 
-            en_tooth = self.get_term_tooth_profile(en_tooth_idx, sec_st, sec_en, rot_ang, is_en=True)
+            en_tooth = self._get_term_tooth_profile(en_tooth_idx, sec_st, sec_en, rot_ang, is_en=True)
             curves.append(en_tooth)
 
             sector_profile = stack_curves(*curves)
 
-        # last_ang = cartesian_to_polar(*sector_profile[:, -1])[0]
-        # print(last_ang)
-
         return sector_profile
 
-    def sortout_teeth(self, sec_st, sec_en, rot_ang=0):
+    def _sortout_teeth(self, sec_st, sec_en, rot_ang=0):
         ang0 = cartesian_to_polar(*self.full_tooth_profile[:, 0])[0] + rot_ang
-        teeth_sts = np.remainder(ang0 + self.tooth_angle * np.arange(self.tooth_num), np.pi * 2)
+        teeth_sts = np.remainder(ang0 + self.ht0.tooth_angle * np.arange(self.ht0.tooth_num), np.pi * 2)
         teeth_ens = np.roll(teeth_sts, -1)
 
         teeth_sts_in_sector_bm = is_within_ang(teeth_sts, sec_st, sec_en)
@@ -159,14 +160,14 @@ class Tooth(GearParams):
         st_tooth_idx = np.nonzero(seg_st_within_tooth_bm)[0][0]
         full_teeth_ins = np.nonzero(full_teeth)[0]
         if full_teeth_ins.size:
-            while (full_teeth_ins[0] - 1) % self.tooth_num != st_tooth_idx:
+            while (full_teeth_ins[0] - 1) % self.ht0.tooth_num != st_tooth_idx:
                 full_teeth_ins = np.roll(full_teeth_ins, 1)
         en_tooth_idx = np.nonzero(seg_en_within_tooth_bm)[0][0]
 
         return st_tooth_idx, full_teeth_ins, en_tooth_idx
 
-    def get_term_tooth_profile(self, tooth_idx, sec_st, sec_en, rot_ang=0, is_en=False):
-        tooth = rotate(*self.full_tooth_profile, self.tooth_angle * tooth_idx + rot_ang)
+    def _get_term_tooth_profile(self, tooth_idx, sec_st, sec_en, rot_ang=0, is_en=False):
+        tooth = rotate(*self.full_tooth_profile, self.ht0.tooth_angle * tooth_idx + rot_ang)
         tooth_ang = cartesian_to_polar(*tooth)[0]
         tooth_in_sector_bm = is_within_ang(tooth_ang, sec_st, sec_en)
         try:
@@ -176,16 +177,8 @@ class Tooth(GearParams):
         return tooth[:, :pt_idx] if is_en else tooth[:, pt_idx:]
 
     def __iter__(self):
-        ang_step = self.tooth_angle / self.rot_params['step_cnt']
-        dir_ = self.rot_params['is_acw'] * 2 - 1  # Bool to sign
+        ang_step = self.ht0.tooth_angle / self.step_cnt
+        dir_ = self.is_acw * 2 - 1  # Bool to sign
         while True:
-            self.rot_params['i'] = (self.rot_params['i'] + 1) % self.rot_params['step_cnt']
-            yield self.get_sector_profile(self.rot_params['sec_st'], self.rot_params['sec_en'],
-                                          (ang_step * self.rot_params['i'] + self.rot_params['rot_ang']) * dir_)
-
-    def __call__(self, step_cnt=100, sec_st=0, sec_en=np.pi, rot_ang=0, is_acw=False):
-        self.rot_params = locals().copy()
-        self.rot_params.pop('self')
-        self.rot_params['i'] = self.rot_params['step_cnt'] - 1
-        return self
-
+            self.i = (self.i + 1) % self.step_cnt
+            yield self.get_sector_profile(self.sec_st, self.sec_en, (ang_step * self.i + self.rot_ang) * dir_)

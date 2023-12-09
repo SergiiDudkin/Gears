@@ -3,13 +3,13 @@ from plots import simple_plot, multiple_plot
 from curves import involute, epitrochoid, epitrochoid_flat
 from gear_params import STANDARD_PRESSURE_ANGLE, get_gear_params, print_gear_params, GearParams
 from transforms import mirror, make_angrad_func, cartesian_to_polar, populate_circ, equidistant
-# from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, Tooth
-from tooth_profile import Tooth
+# from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, HalfTooth
+from tooth_profile import HalfTooth
 
 np.set_printoptions(linewidth=1000)
 
 
-function = 'Tooth'
+function = 'HalfTooth'
 
 if function == 'involute':
     # t_s = np.arange(0, 4, 0.001)
@@ -169,8 +169,8 @@ if function == 'GearParams':
     print(params)
 
 
-if function == 'Tooth':
-    tooth = Tooth(tooth_num=18, module=10, de_coef=1)
+if function == 'HalfTooth':
+    tooth = HalfTooth(tooth_num=18, module=10, de_coef=1)
     hta = cartesian_to_polar(*tooth.half_tooth_profile)[0]
     # print(hta[-1] - hta[0])
     fta = cartesian_to_polar(*tooth.full_tooth_profile)[0]

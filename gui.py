@@ -7,7 +7,7 @@ from matplotlib.backend_bases import key_press_handler
 import numpy as np
 from PIL import Image, ImageTk
 import os
-from tooth_profile import Tooth
+from tooth_profile import HalfTooth, GearSector
 
 
 
@@ -73,7 +73,7 @@ class GearsApp(Tk):
         self.canvas.mpl_connect("key_press_event", self.on_key_press)
 
 
-        self.tooth = Tooth(tooth_num=18, module=10, de_coef=1)
+        self.tooth = HalfTooth(tooth_num=18, module=10, de_coef=1)
         # self.tooth()
         self.delay_ms = 1
         self.after_id = None
@@ -129,14 +129,16 @@ class GearsApp(Tk):
         self.stop_btn.config(state=NORMAL)
         self.break_loop()
         self.play_btn.config(image=self.pause_img, command=self.pause)
-        self.rotating_tooth_segment = iter(self.tooth(step_cnt=100, sec_st=np.pi/2, sec_en=np.pi, rot_ang=0, is_acw=False))
+        self.gear_sector = GearSector(self.tooth, self.tooth, step_cnt=100, sector=(np.pi/2, np.pi), rot_ang=0,
+                                      is_acw=False)
+        self.rotating_gear_sector = iter(self.gear_sector)
         self.ax.set_xlim((-105, 5))
         self.ax.set_ylim((-5, 105))
         self.show_next_frame()
 
     def show_next_frame(self):
-        self.plot_data(*next(self.rotating_tooth_segment))
-        self.cnt_lbl['text'] = self.tooth.rot_params['i']
+        self.plot_data(*next(self.rotating_gear_sector))
+        self.cnt_lbl['text'] = self.gear_sector.i
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
 
 
