@@ -37,6 +37,12 @@ def cartesian_to_polar(x, y):
     return ang, rad
 
 
+def polar_to_cartesian(ang, rad):
+    x = rad * np.cos(ang)
+    y = rad * np.sin(ang)
+    return x, y
+
+
 def make_angrad_func(func):
     """
     Convert parametric equation f(t) -> (x, y) into explicit function f(radius) -> angle. The rad must increase with t.
@@ -173,3 +179,11 @@ def is_within_ang(q_ang, st_ang, en_ang):
 
     operator = np.bitwise_and if st_ang < en_ang else np.bitwise_or
     return operator(st_ang <= q_ang, q_ang < en_ang)
+
+
+def upd_xy_lims(x, y, min_x, min_y, max_x, max_y):
+    min_x = min(min_x, x)
+    min_y = min(min_y, y)
+    max_x = max(max_x, x)
+    max_y = max(max_y, y)
+    return min_x, min_y, max_x, max_y

@@ -3,11 +3,13 @@ import tkinter.ttk as ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.backend_bases import key_press_handler
+from matplotlib.pyplot import Circle
 # import matplotlib
 import numpy as np
 from PIL import Image, ImageTk
 import os
 from tooth_profile import HalfTooth, GearSector
+from transforms import upd_xy_lims
 
 
 
@@ -90,8 +92,7 @@ class GearsApp(Tk):
         self.ax.autoscale_view()  # Update ax.viewLim using the new dataLim
         self.canvas.draw()
 
-
-
+    # Button callbacks
     def pause(self, event=None):
         self.break_loop()
         self.play_btn.config(image=self.play_img, command=self.resume)
@@ -108,13 +109,12 @@ class GearsApp(Tk):
             self.after_cancel(self.after_id)
             self.after_id = None
 
-
-
     def stop(self):
         self.break_loop()
         self.reset()
 
     def reset(self):
+        [patch.remove() for patch in self.ax.patches]
         self.play_btn.config(image=self.play_img, command=self.play)
         self.plot_data([], [])
         self.stop_btn.config(state=DISABLED)
@@ -129,11 +129,17 @@ class GearsApp(Tk):
         self.stop_btn.config(state=NORMAL)
         self.break_loop()
         self.play_btn.config(image=self.pause_img, command=self.pause)
-        self.gear_sector = GearSector(self.tooth, self.tooth, step_cnt=100, sector=(np.pi/2, np.pi), rot_ang=0,
+        self.gear_sector = GearSector(self.tooth, self.tooth, step_cnt=100, sector=(np.pi*1.75, np.pi*0.25), rot_ang=0,
                                       is_acw=False)
+        ctr_circ = Circle((0, 0), self.gear_sector.ht0.pitch_radius * 0.01, color='blue')
+        self.ax.add_patch(ctr_circ)
+        xy_lims = self.gear_sector.get_limits()
+        xy_lims = upd_xy_lims(0, 0, *xy_lims)
+        min_x, min_y, max_x, max_y = xy_lims
+        margin = max(max_x - min_x, max_y - min_y) * 0.05
+        self.ax.set_xlim((min_x - margin, max_x + margin))
+        self.ax.set_ylim((min_y - margin, max_y + margin))
         self.rotating_gear_sector = iter(self.gear_sector)
-        self.ax.set_xlim((-105, 5))
-        self.ax.set_ylim((-5, 105))
         self.show_next_frame()
 
     def show_next_frame(self):

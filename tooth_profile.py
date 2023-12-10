@@ -1,5 +1,5 @@
 import numpy as np
-from transforms import make_angrad_func, mirror, populate_circ, equidistant, stack_curves, is_within_ang, rotate, cartesian_to_polar
+from transforms import make_angrad_func, mirror, populate_circ, equidistant, stack_curves, is_within_ang, rotate, cartesian_to_polar, polar_to_cartesian, upd_xy_lims
 from curves import circle, involute, epitrochoid, epitrochoid_flat
 from gear_params import GearParams, STANDARD_PRESSURE_ANGLE, STANDARD_ADDENDUM_COEF, STANDARD_DEDENDUM_COEF
 
@@ -182,3 +182,14 @@ class GearSector:
         while True:
             self.i = (self.i + 1) % self.step_cnt
             yield self.get_sector_profile(self.sec_st, self.sec_en, (ang_step * self.i + self.rot_ang) * dir_)
+
+    def get_limits(self):
+        xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
+        for ang in (self.sec_st, self.sec_en):
+            for rad in (self.ht0.root_radius, self.ht0.outside_radius):
+                x, y = polar_to_cartesian(ang, rad)
+                xy_lims = upd_xy_lims(x, y, *xy_lims)
+        for i, (x, y) in enumerate([(1, 0), (0, 1), (-1, 0), (0, -1)]):
+            if is_within_ang(i * np.pi / 2, self.sec_st, self.sec_en):
+                xy_lims = upd_xy_lims(x * self.ht0.outside_radius, y * self.ht0.outside_radius, *xy_lims)
+        return xy_lims
