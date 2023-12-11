@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image, ImageTk
 import os
 from tooth_profile import HalfTooth, GearSector
-from transforms import upd_xy_lims
+from transforms import upd_xy_lims, merge_xy_lims
 
 
 
@@ -62,7 +62,8 @@ class GearsApp(Tk):
         self.ax = self.fig.add_subplot()
         self.ax.set_aspect('equal', 'box')
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.globplot_frame)
-        self.data, = self.ax.plot([], [], color='b', linewidth=1)
+        self.ax.plot([], [], color='b', linewidth=1)
+        self.ax.plot([], [], color='r', linewidth=1)
         self.ax.set_xlim((0, 1))
         self.ax.set_ylim((0, 1))
 
@@ -74,20 +75,21 @@ class GearsApp(Tk):
         self.canvas.get_tk_widget().pack(side=TOP, padx=2, pady=2, fill=BOTH, expand=1)
         self.canvas.mpl_connect("key_press_event", self.on_key_press)
 
-
-        self.tooth = HalfTooth(tooth_num=18, module=10, de_coef=1)
-        # self.tooth()
+        self.tooth0 = HalfTooth(tooth_num=18, module=10, de_coef=1)
+        self.tooth1 = HalfTooth(tooth_num=61, module=10, de_coef=1)
         self.delay_ms = 1
         self.after_id = None
+        self.has_gear0 = True
+        self.has_gear1 = True
 
 
     # Matplotlib functions
     def on_key_press(self, event):
         key_press_handler(event, self.canvas, self.toolbar)
 
-    def plot_data(self, x_vals, y_vals):
-        self.data.set_xdata(np.array(x_vals))
-        self.data.set_ydata(np.array(y_vals))
+    def plot_data(self, line, x_vals, y_vals):
+        line.set_xdata(np.array(x_vals))
+        line.set_ydata(np.array(y_vals))
         self.ax.relim()  # Recompute the ax.dataLim
         self.ax.autoscale_view()  # Update ax.viewLim using the new dataLim
         self.canvas.draw()
@@ -115,8 +117,8 @@ class GearsApp(Tk):
 
     def reset(self):
         [patch.remove() for patch in self.ax.patches]
+        [self.plot_data(line, [], []) for line in self.ax.lines]
         self.play_btn.config(image=self.play_img, command=self.play)
-        self.plot_data([], [])
         self.stop_btn.config(state=DISABLED)
         self.next_btn.config(state=DISABLED)
         self.cnt_lbl['text'] = ''
@@ -129,22 +131,43 @@ class GearsApp(Tk):
         self.stop_btn.config(state=NORMAL)
         self.break_loop()
         self.play_btn.config(image=self.pause_img, command=self.pause)
-        self.gear_sector = GearSector(self.tooth, self.tooth, step_cnt=100, sector=(np.pi*1.75, np.pi*0.25), rot_ang=0,
-                                      is_acw=False)
-        ctr_circ = Circle((0, 0), self.gear_sector.ht0.pitch_radius * 0.01, color='blue')
-        self.ax.add_patch(ctr_circ)
-        xy_lims = self.gear_sector.get_limits()
-        xy_lims = upd_xy_lims(0, 0, *xy_lims)
+        xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
+
+        if self.has_gear0:
+            self.gear_sector0 = GearSector(self.tooth0, self.tooth0, step_cnt=100, sector=(np.pi*1.75, np.pi*0.25),
+                                           rot_ang=0, is_acw=False)
+            self.rotating_gear_sector0 = iter(self.gear_sector0)
+            ctr_circ = Circle((0, 0), self.gear_sector0.ht0.pitch_radius * 0.01, color='b')
+            self.ax.add_patch(ctr_circ)
+            xy_lims = merge_xy_lims(*xy_lims, *self.gear_sector0.get_limits())
+            xy_lims = upd_xy_lims(0, 0, *xy_lims)
+
+        if self.has_gear1:
+            self.gear_sector1 = GearSector(self.tooth1, self.tooth1, step_cnt=100, sector=(np.pi*0.75, np.pi*1.25),
+                                           rot_ang=np.pi, is_acw=True)
+            self.rotating_gear_sector1 = iter(self.gear_sector1)
+            self.ctr_dist = self.gear_sector0.ht0.pitch_radius + self.gear_sector1.ht0.pitch_radius
+            ctr_circ = Circle((self.ctr_dist, 0), self.gear_sector1.ht0.pitch_radius * 0.01, color='r')
+            self.ax.add_patch(ctr_circ)
+            xy_lims_ = self.gear_sector1.get_limits()
+            xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + self.ctr_dist, xy_lims_[1], xy_lims_[2] + self.ctr_dist,
+                                    xy_lims_[3])
+            xy_lims = upd_xy_lims(self.ctr_dist, 0, *xy_lims)
+
         min_x, min_y, max_x, max_y = xy_lims
         margin = max(max_x - min_x, max_y - min_y) * 0.05
         self.ax.set_xlim((min_x - margin, max_x + margin))
         self.ax.set_ylim((min_y - margin, max_y + margin))
-        self.rotating_gear_sector = iter(self.gear_sector)
+
         self.show_next_frame()
 
     def show_next_frame(self):
-        self.plot_data(*next(self.rotating_gear_sector))
-        self.cnt_lbl['text'] = self.gear_sector.i
+        if self.has_gear0:
+            self.plot_data(self.ax.lines[0], *next(self.rotating_gear_sector0))
+        if self.has_gear1:
+            x_es, y_es = next(self.rotating_gear_sector1)
+            self.plot_data(self.ax.lines[1], x_es + self.ctr_dist, y_es)
+        self.cnt_lbl['text'] = self.gear_sector0.i
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
 
 

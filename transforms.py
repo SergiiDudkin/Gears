@@ -187,3 +187,7 @@ def upd_xy_lims(x, y, min_x, min_y, max_x, max_y):
     max_x = max(max_x, x)
     max_y = max(max_y, y)
     return min_x, min_y, max_x, max_y
+
+
+def merge_xy_lims(min_x0, min_y0, max_x0, max_y0, min_x1, min_y1, max_x1, max_y1):
+    return min(min_x0, min_x1), min(min_y0, min_y1), max(max_x0, max_x1), max(max_y0, max_y1)
