@@ -4,13 +4,66 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.pyplot import Circle
-# import matplotlib
 import numpy as np
-from PIL import Image, ImageTk
 import os
 from tooth_profile import HalfTooth, GearSector
 from transforms import upd_xy_lims, merge_xy_lims
 
+
+class ToolbarPlayer(NavigationToolbar2Tk):
+    def __init__(self, canvas, window, callback_play, callback_next_frame, callback_pause, callback_resume,
+                 callback_stop):
+        self.callback_play = callback_play
+        self.callback_pause = callback_pause
+        self.callback_resume = callback_resume
+
+        super().__init__(canvas, window, pack_toolbar=False)
+        self.pack(side=BOTTOM, padx=2, pady=0, fill=X)
+        self._Spacer()
+
+        self.script_folder = os.path.dirname(os.path.realpath(__file__))
+        self.play_img = os.path.join(self.script_folder, 'images', 'play.png')
+        self.stop_img = os.path.join(self.script_folder, 'images', 'stop.png')
+        self.pause_img = os.path.join(self.script_folder, 'images', 'pause.png')
+        self.next_img = os.path.join(self.script_folder, 'images', 'next.png')
+
+        self.play_btn = self._Button(text=None, image_file=self.play_img, toggle=False, command=callback_play)
+        self.next_btn = self._Button(text=None, image_file=self.next_img, toggle=False, command=callback_next_frame)
+        self.next_btn.config(state=DISABLED)
+        self.stop_btn = self._Button(text=None, image_file=self.stop_img, toggle=False, command=callback_stop)
+        self.stop_btn.config(state=DISABLED)
+
+        self.cnt_lbl = Label(self, font=self._label_font, width=4, anchor=W)
+        self.cnt_lbl.pack(padx=2, pady=0, side=LEFT)
+
+    def set_btn_img(self, btn, img):
+        btn._image_file = img
+        ToolbarPlayer._set_image_for_button(self, btn)
+
+    def pause_cfg(self):
+        self.play_btn.config(command=self.callback_resume)
+        self.set_btn_img(self.play_btn, self.play_img)
+        self.next_btn.config(state=NORMAL)
+
+    def resume_cfg(self):
+        self.next_btn.config(state=DISABLED)
+        self.play_btn.config(command=self.callback_pause)
+        self.set_btn_img(self.play_btn, self.pause_img)
+
+    def reset_cfg(self):
+        self.play_btn.config(command=self.callback_play)
+        self.set_btn_img(self.play_btn, self.play_img)
+        self.stop_btn.config(state=DISABLED)
+        self.next_btn.config(state=DISABLED)
+        self.cnt_lbl['text'] = ''
+
+    def play_cfg(self):
+        self.stop_btn.config(state=NORMAL)
+        self.play_btn.config(command=self.callback_pause)
+        self.set_btn_img(self.play_btn, self.pause_img)
+
+    def upd_frame_num(self, num):
+        self.cnt_lbl['text'] = f'#{num}'
 
 
 class GearsApp(Tk):
@@ -47,28 +100,8 @@ class GearsApp(Tk):
         self.ax.plot([], [], color='r', linewidth=1)
         self.ax.set_xlim((0, 1))
         self.ax.set_ylim((0, 1))
-
-                # Matplotlib toolbar
-        self.toolbar = NavigationToolbar2Tk(self.canvas, self.globplot_frame, pack_toolbar=False)
-        self.toolbar.pack(side=BOTTOM, padx=2, pady=0, fill=X)
-        self.toolbar._Spacer()
-
-        self.script_folder = os.path.dirname(os.path.realpath(__file__))
-        self.play_img = os.path.join(self.script_folder, 'images', 'play.png')
-        self.stop_img = os.path.join(self.script_folder, 'images', 'stop.png')
-        self.pause_img = os.path.join(self.script_folder, 'images', 'pause.png')
-        self.next_img = os.path.join(self.script_folder, 'images', 'next.png')
-
-        self.play_btn = self.toolbar._Button(text=None, image_file=self.play_img, toggle=False, command=self.play)
-        self.next_btn = self.toolbar._Button(text=None, image_file=self.next_img, toggle=False, command=self.next_frame)
-        self.next_btn.config(state=DISABLED)
-        self.stop_btn = self.toolbar._Button(text=None, image_file=self.stop_img, toggle=False, command=self.stop)
-        self.stop_btn.config(state=DISABLED)
-
-        self.cnt_lbl = Label(self.toolbar, font=self.toolbar._label_font, width=4, anchor=W)
-        self.cnt_lbl.pack(padx=2, pady=0, side=LEFT)
-
-                # Matplotlib canvas
+        self.toolbar = ToolbarPlayer(self.canvas, self.globplot_frame, self.play, self.next_frame, self.pause,
+                                     self.resume, self.stop)
         self.canvas.get_tk_widget().pack(side=TOP, padx=2, pady=0, fill=BOTH, expand=1)
         self.canvas.mpl_connect("key_press_event", self.on_key_press)
 
@@ -79,7 +112,7 @@ class GearsApp(Tk):
         self.has_gear0 = True
         self.has_gear1 = True
 
-    # Matplotlib functions
+    # Matplotlib funcs
     def on_key_press(self, event):
         key_press_handler(event, self.canvas, self.toolbar)
 
@@ -90,51 +123,10 @@ class GearsApp(Tk):
         self.ax.autoscale_view()  # Update ax.viewLim using the new dataLim
         self.canvas.draw()
 
-    def set_btn_img(self, btn, img):
-        btn._image_file = img
-        NavigationToolbar2Tk._set_image_for_button(self.toolbar, btn)
-
     # Button callbacks
-    def pause(self, event=None):
-        self.break_loop()
-        self.play_btn.config(command=self.resume)
-        self.set_btn_img(self.play_btn, self.play_img)
-        self.next_btn.config(state=NORMAL)
-
-    def resume(self, event=None):
-        self.next_btn.config(state=DISABLED)
-        self.show_next_frame()
-        self.play_btn.config(command=self.pause)
-        self.set_btn_img(self.play_btn, self.pause_img)
-
-    def break_loop(self):
-        """Stop circulating frames"""
-        if self.after_id is not None:
-            self.after_cancel(self.after_id)
-            self.after_id = None
-
-    def stop(self):
-        self.break_loop()
-        self.reset()
-
-    def reset(self):
-        [patch.remove() for patch in self.ax.patches]
-        [self.plot_data(line, [], []) for line in self.ax.lines]
-        self.play_btn.config(command=self.play)
-        self.set_btn_img(self.play_btn, self.play_img)
-        self.stop_btn.config(state=DISABLED)
-        self.next_btn.config(state=DISABLED)
-        self.cnt_lbl['text'] = ''
-
-    def next_frame(self):
-        self.show_next_frame()
-        self.break_loop()
-
     def play(self, event=None):
-        self.stop_btn.config(state=NORMAL)
         self.break_loop()
-        self.play_btn.config(command=self.pause)
-        self.set_btn_img(self.play_btn, self.pause_img)
+        self.toolbar.play_cfg()
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
         if self.has_gear0:
@@ -165,14 +157,43 @@ class GearsApp(Tk):
 
         self.show_next_frame()
 
+    def next_frame(self):
+        self.show_next_frame()
+        self.break_loop()
+
+    def pause(self, event=None):
+        self.break_loop()
+        self.toolbar.pause_cfg()
+
+    def resume(self, event=None):
+        self.toolbar.resume_cfg()
+        self.show_next_frame()
+
+    def stop(self):
+        self.break_loop()
+        self.reset()
+
+    # Helpers
     def show_next_frame(self):
         if self.has_gear0:
             self.plot_data(self.ax.lines[0], *next(self.rotating_gear_sector0))
         if self.has_gear1:
             x_es, y_es = next(self.rotating_gear_sector1)
             self.plot_data(self.ax.lines[1], x_es + self.ctr_dist, y_es)
-        self.cnt_lbl['text'] = f'#{self.gear_sector0.i}'
+        self.toolbar.upd_frame_num(self.gear_sector0.i)
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
+
+    def break_loop(self):
+        """Stop circulating frames"""
+        if self.after_id is not None:
+            self.after_cancel(self.after_id)
+            self.after_id = None
+
+    def reset(self):
+        """Restore initial appearance"""
+        [patch.remove() for patch in self.ax.patches]
+        [self.plot_data(line, [], []) for line in self.ax.lines]
+        self.toolbar.reset_cfg()
 
 
 if __name__ == '__main__':
