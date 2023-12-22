@@ -66,6 +66,45 @@ class ToolbarPlayer(NavigationToolbar2Tk):
         self.cnt_lbl['text'] = f'#{num}'
 
 
+class EntryValid(Entry, object):
+    """General entry widget with validation. Validator func must be added as the 2nd argument."""
+    def __init__(self, parent, validator, **kwargs):
+        self.validator = validator
+        self.strvar = StringVar(parent)
+        self.strvar.trace('w', self.entry_callback)
+        kwargs['textvariable'] = self.strvar
+        super(EntryValid, self).__init__(parent, **kwargs)
+        self.entry_callback()
+
+    def entry_callback(self, *args):
+        self.is_valid = self.validator(self.strvar.get())
+        self['bg'] = 'lemon chiffon' if self.is_valid else '#fca7b8'
+
+
+def check_pos_int(strvar):
+    try:
+        num = int(strvar)
+    except ValueError:
+        return False
+    return True if num > 0 else False
+
+
+def check_pos_finite(strvar):
+    try:
+        num = float(strvar)
+    except ValueError:
+        return False
+    return True if (num > 0 and num != float('inf')) else False
+
+
+def check_90_deg(strvar):
+    try:
+        num = float(strvar)
+    except ValueError:
+        return False
+    return True if (0 < num < 90) else False
+
+
 class GearsApp(Tk):
     """Gears app with GUI"""
     def __init__(self):
@@ -73,7 +112,7 @@ class GearsApp(Tk):
 
         # Window setup
         self.title('GEARS')
-        self.geometry('800x800')
+        self.geometry('1000x800')
         self.resizable(True, True)
         self.style = ttk.Style()
         self.style.theme_use('classic')
@@ -82,10 +121,57 @@ class GearsApp(Tk):
         main_frame = Frame(self)
         main_frame.pack(padx=2, pady=2, side=LEFT, fill=BOTH, expand=True)
 
+        # Sidebar
+        tabs_frame = Frame(main_frame)
+        tabs_frame.pack(side=LEFT, fill=Y)
+
+            # Common
+        common_params_frame = ttk.LabelFrame(tabs_frame, labelwidget=Label(tabs_frame, text='Common',
+                                                                     font=('Times', 10, 'italic')),
+                                             labelanchor=N, style='Clr.TLabelframe')
+        common_params_frame.pack(side=TOP, padx=2, pady=2, fill=X)
+        common_params_frame.columnconfigure(0, weight=1)
+
+        Label(common_params_frame, text='Module').grid(row=0, column=0, padx=2, pady=2, sticky=W)
+        self.module = EntryValid(common_params_frame, check_pos_finite, width=6, justify='right')
+        self.module.grid(row=0, column=1, padx=2, pady=2, sticky=E)
+
+        Label(common_params_frame, text='Pressure angle').grid(row=1, column=0, padx=2, pady=2, sticky=W)
+        self.pressure_angle = EntryValid(common_params_frame, check_90_deg, width=6, justify='right')
+        self.pressure_angle.grid(row=1, column=1, padx=2, pady=2, sticky=E)
+
+            # Gear 1
+        params0_frame = ttk.LabelFrame(tabs_frame, labelwidget=Label(tabs_frame, text='Gear 1',
+                                                                     font=('Times', 10, 'italic')),
+                                       labelanchor=N, style='Clr.TLabelframe')
+        params0_frame.pack(side=TOP, padx=2, pady=2, fill=X)
+        params0_frame.columnconfigure(0, weight=1)
+
+        Label(params0_frame, text='Number of teeth').grid(row=0, column=0, padx=2, pady=2, sticky=W)
+        self.tooth_num0 = EntryValid(params0_frame, check_pos_int, width=6, justify='right')
+        self.tooth_num0.grid(row=0, column=1, padx=2, pady=2, sticky=E)
+
+        Label(params0_frame, text='Addendum').grid(row=1, column=0, padx=2, pady=2, sticky=W)
+        self.tooth_num0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
+        self.tooth_num0.grid(row=1, column=1, padx=2, pady=2, sticky=E)
+
+        Label(params0_frame, text='Dedendum').grid(row=2, column=0, padx=2, pady=2, sticky=W)
+        self.tooth_num0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
+        self.tooth_num0.grid(row=2, column=1, padx=2, pady=2, sticky=E)
+
+        # self.some_btn = Button(tabs_frame, command=self.button_cmd, text='Some button')
+        # self.some_btn.pack(side=TOP)
+        #
+        # # style.configure('TButton', background='green')
+        # self.style.configure('My.TButton', background='red', foreground='green', width=30, height=20, borderwidth=3, focusthickness=10,
+        #                 focuscolor='blue')
+        # self.extra_btn = ttk.Button(tabs_frame, command=self.button_cmd, text='Extra button', style='My.TButton')
+        # self.extra_btn.pack(side=TOP)
+
             # Plots frame
         plots_frame = Frame(main_frame)
         plots_frame.pack(side=LEFT, fill=BOTH, expand=True)
-        self.globplot_frame = ttk.LabelFrame(plots_frame, labelwidget=Label(plots_frame, text='2D Model',
+        self.globplot_frame = ttk.LabelFrame(plots_frame, labelwidget=Label(plots_frame, text='Simulation',
                                              font=('Times', 10, 'italic')), labelanchor=N, style='Clr.TLabelframe')
         self.globplot_frame.pack(padx=2, pady=2, ipady=0, fill=BOTH, expand=True)
 

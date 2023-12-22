@@ -48,7 +48,7 @@ def print_gear_params(pitch_diameter, outside_diameter, root_diameter, base_diam
             print(f'{val_name}: {locals()[arg_name] / 2}')
 
 
-class GearParams():
+class GearParams:
     def __init__(self, tooth_num, module, pressure_angle=STANDARD_PRESSURE_ANGLE, ad_coef=STANDARD_ADDENDUM_COEF,
                  de_coef=STANDARD_DEDENDUM_COEF):
         self.tooth_num = tooth_num
