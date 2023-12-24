@@ -65,20 +65,28 @@ class ToolbarPlayer(NavigationToolbar2Tk):
     def upd_frame_num(self, num):
         self.cnt_lbl['text'] = f'#{num}'
 
+    def activate(self):
+        print('activate')
+
+    def deactivate(self):
+        print('deactivate')
+
 
 class EntryValid(Entry, object):
     """General entry widget with validation. Validator func must be added as the 2nd argument."""
     def __init__(self, parent, validator, **kwargs):
+        self.input_callback = parent.master.input_callback
         self.validator = validator
         self.strvar = StringVar(parent)
         self.strvar.trace('w', self.entry_callback)
         kwargs['textvariable'] = self.strvar
-        super(EntryValid, self).__init__(parent, **kwargs)
+        super().__init__(parent, **kwargs)
         self.entry_callback()
 
     def entry_callback(self, *args):
         self.is_valid = self.validator(self.strvar.get())
         self['bg'] = 'lemon chiffon' if self.is_valid else '#fca7b8'
+        self.input_callback()
 
 
 def check_pos_int(strvar):
@@ -105,6 +113,61 @@ def check_90_deg(strvar):
     return True if (0 < num < 90) else False
 
 
+def get_entry_valid_recur(widget):
+    return [widget] if isinstance(widget, EntryValid) \
+        else [item for child in widget.winfo_children() for item in get_entry_valid_recur(child)]
+
+
+class InputFrame(Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.pack(side=LEFT, fill=Y)
+        self.input_fields = []
+
+            # Common
+        common_params_frame = ttk.LabelFrame(self, labelwidget=Label(self, text='Common',
+                                                                     font=('Times', 10, 'italic')),
+                                             labelanchor=N, style='Clr.TLabelframe')
+        common_params_frame.pack(side=TOP, padx=2, pady=2, fill=X)
+        common_params_frame.columnconfigure(0, weight=1)
+
+        Label(common_params_frame, text='Module').grid(row=0, column=0, padx=2, pady=2, sticky=W)
+        self.module = EntryValid(common_params_frame, check_pos_finite, width=6, justify='right')
+        self.module.grid(row=0, column=1, padx=2, pady=2, sticky=E)
+
+        Label(common_params_frame, text='Pressure angle').grid(row=1, column=0, padx=2, pady=2, sticky=W)
+        self.pressure_angle = EntryValid(common_params_frame, check_90_deg, width=6, justify='right')
+        self.pressure_angle.grid(row=1, column=1, padx=2, pady=2, sticky=E)
+
+            # Gear 1
+        params0_frame = ttk.LabelFrame(self, labelwidget=Label(self, text='Gear 1',
+                                                                     font=('Times', 10, 'italic')),
+                                       labelanchor=N, style='Clr.TLabelframe')
+        params0_frame.pack(side=TOP, padx=2, pady=2, fill=X)
+        params0_frame.columnconfigure(0, weight=1)
+
+        Label(params0_frame, text='Number of teeth').grid(row=0, column=0, padx=2, pady=2, sticky=W)
+        self.tooth_num0 = EntryValid(params0_frame, check_pos_int, width=6, justify='right')
+        self.tooth_num0.grid(row=0, column=1, padx=2, pady=2, sticky=E)
+
+        Label(params0_frame, text='Addendum').grid(row=1, column=0, padx=2, pady=2, sticky=W)
+        self.addendum0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
+        self.addendum0.grid(row=1, column=1, padx=2, pady=2, sticky=E)
+
+        Label(params0_frame, text='Dedendum').grid(row=2, column=0, padx=2, pady=2, sticky=W)
+        self.dedendum0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
+        self.dedendum0.grid(row=2, column=1, padx=2, pady=2, sticky=E)
+
+        self.input_fields = get_entry_valid_recur(self)
+
+    def input_callback(self):
+        if self.input_fields:
+            if all([field.is_valid for field in self.input_fields]):
+                self.master.master.toolbar.activate()
+            else:
+                self.master.master.toolbar.deactivate()
+
+
 class GearsApp(Tk):
     """Gears app with GUI"""
     def __init__(self):
@@ -122,51 +185,7 @@ class GearsApp(Tk):
         main_frame.pack(padx=2, pady=2, side=LEFT, fill=BOTH, expand=True)
 
         # Sidebar
-        tabs_frame = Frame(main_frame)
-        tabs_frame.pack(side=LEFT, fill=Y)
-
-            # Common
-        common_params_frame = ttk.LabelFrame(tabs_frame, labelwidget=Label(tabs_frame, text='Common',
-                                                                     font=('Times', 10, 'italic')),
-                                             labelanchor=N, style='Clr.TLabelframe')
-        common_params_frame.pack(side=TOP, padx=2, pady=2, fill=X)
-        common_params_frame.columnconfigure(0, weight=1)
-
-        Label(common_params_frame, text='Module').grid(row=0, column=0, padx=2, pady=2, sticky=W)
-        self.module = EntryValid(common_params_frame, check_pos_finite, width=6, justify='right')
-        self.module.grid(row=0, column=1, padx=2, pady=2, sticky=E)
-
-        Label(common_params_frame, text='Pressure angle').grid(row=1, column=0, padx=2, pady=2, sticky=W)
-        self.pressure_angle = EntryValid(common_params_frame, check_90_deg, width=6, justify='right')
-        self.pressure_angle.grid(row=1, column=1, padx=2, pady=2, sticky=E)
-
-            # Gear 1
-        params0_frame = ttk.LabelFrame(tabs_frame, labelwidget=Label(tabs_frame, text='Gear 1',
-                                                                     font=('Times', 10, 'italic')),
-                                       labelanchor=N, style='Clr.TLabelframe')
-        params0_frame.pack(side=TOP, padx=2, pady=2, fill=X)
-        params0_frame.columnconfigure(0, weight=1)
-
-        Label(params0_frame, text='Number of teeth').grid(row=0, column=0, padx=2, pady=2, sticky=W)
-        self.tooth_num0 = EntryValid(params0_frame, check_pos_int, width=6, justify='right')
-        self.tooth_num0.grid(row=0, column=1, padx=2, pady=2, sticky=E)
-
-        Label(params0_frame, text='Addendum').grid(row=1, column=0, padx=2, pady=2, sticky=W)
-        self.tooth_num0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
-        self.tooth_num0.grid(row=1, column=1, padx=2, pady=2, sticky=E)
-
-        Label(params0_frame, text='Dedendum').grid(row=2, column=0, padx=2, pady=2, sticky=W)
-        self.tooth_num0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
-        self.tooth_num0.grid(row=2, column=1, padx=2, pady=2, sticky=E)
-
-        # self.some_btn = Button(tabs_frame, command=self.button_cmd, text='Some button')
-        # self.some_btn.pack(side=TOP)
-        #
-        # # style.configure('TButton', background='green')
-        # self.style.configure('My.TButton', background='red', foreground='green', width=30, height=20, borderwidth=3, focusthickness=10,
-        #                 focuscolor='blue')
-        # self.extra_btn = ttk.Button(tabs_frame, command=self.button_cmd, text='Extra button', style='My.TButton')
-        # self.extra_btn.pack(side=TOP)
+        self.inputs = InputFrame(main_frame)
 
             # Plots frame
         plots_frame = Frame(main_frame)
@@ -179,6 +198,7 @@ class GearsApp(Tk):
         self.fig = Figure(figsize=(10, 8))
         self.fig.set_tight_layout(True)
         self.fig.set_facecolor(self.cget("background"))
+        # self.fig.set_facecolor('r')
         self.ax = self.fig.add_subplot()
         self.ax.set_aspect('equal', 'box')
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.globplot_frame)
@@ -191,7 +211,7 @@ class GearsApp(Tk):
         self.canvas.get_tk_widget().pack(side=TOP, padx=2, pady=0, fill=BOTH, expand=1)
         self.canvas.mpl_connect("key_press_event", self.on_key_press)
 
-        self.tooth0 = HalfTooth(tooth_num=18, module=10, de_coef=1)
+        # self.tooth0 = HalfTooth(tooth_num=18, module=10, de_coef=1)
         self.tooth1 = HalfTooth(tooth_num=61, module=10, de_coef=1)
         self.delay_ms = 1
         self.after_id = None
@@ -213,6 +233,7 @@ class GearsApp(Tk):
     def play(self, event=None):
         self.break_loop()
         self.toolbar.play_cfg()
+        self.tooth0 = HalfTooth(tooth_num=int(self.inputs.tooth_num0.strvar.get()), module=10, de_coef=float(self.inputs.dedendum0.strvar.get()))
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
         if self.has_gear0:
