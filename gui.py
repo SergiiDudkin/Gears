@@ -1,5 +1,4 @@
 from tkinter import *
-import tkinter.ttk as ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.backend_bases import key_press_handler
@@ -8,6 +7,14 @@ import numpy as np
 import os
 from tooth_profile import HalfTooth, GearSector
 from transforms import upd_xy_lims, merge_xy_lims
+from enum import Enum, auto
+
+
+class State(Enum):
+    PAUSE = auto()
+    RESUME = auto()
+    RESET = auto()
+    PLAY = auto()
 
 
 class ToolbarPlayer(NavigationToolbar2Tk):
@@ -29,47 +36,52 @@ class ToolbarPlayer(NavigationToolbar2Tk):
 
         self.play_btn = self._Button(text=None, image_file=self.play_img, toggle=False, command=callback_play)
         self.next_btn = self._Button(text=None, image_file=self.next_img, toggle=False, command=callback_next_frame)
-        self.next_btn.config(state=DISABLED)
         self.stop_btn = self._Button(text=None, image_file=self.stop_img, toggle=False, command=callback_stop)
-        self.stop_btn.config(state=DISABLED)
-
         self.cnt_lbl = Label(self, font=self._label_font, width=4, anchor=W)
-        self.cnt_lbl.pack(padx=2, pady=0, side=LEFT)
+        self.cnt_lbl.pack(padx=0, pady=0, side=LEFT)
+
+        self.reset_state()
 
     def set_btn_img(self, btn, img):
         btn._image_file = img
         ToolbarPlayer._set_image_for_button(self, btn)
 
-    def pause_cfg(self):
+    def pause_state(self):
         self.play_btn.config(command=self.callback_resume)
         self.set_btn_img(self.play_btn, self.play_img)
         self.next_btn.config(state=NORMAL)
+        self.state = State.PAUSE
 
-    def resume_cfg(self):
+    def resume_state(self):
         self.next_btn.config(state=DISABLED)
         self.play_btn.config(command=self.callback_pause)
         self.set_btn_img(self.play_btn, self.pause_img)
+        self.state = State.RESUME
 
-    def reset_cfg(self):
+    def reset_state(self):
         self.play_btn.config(command=self.callback_play)
         self.set_btn_img(self.play_btn, self.play_img)
         self.stop_btn.config(state=DISABLED)
         self.next_btn.config(state=DISABLED)
         self.cnt_lbl['text'] = ''
+        self.state = State.RESET
 
-    def play_cfg(self):
+    def play_state(self):
         self.stop_btn.config(state=NORMAL)
         self.play_btn.config(command=self.callback_pause)
         self.set_btn_img(self.play_btn, self.pause_img)
+        self.state = State.PLAY
 
     def upd_frame_num(self, num):
         self.cnt_lbl['text'] = f'#{num}'
 
     def activate(self):
-        print('activate')
+        if self.state == State.RESET:
+            self.play_btn.config(state=NORMAL)
 
     def deactivate(self):
-        print('deactivate')
+        if self.state == State.RESET:
+            self.play_btn.config(state=DISABLED)
 
 
 class EntryValid(Entry, object):
@@ -125,40 +137,72 @@ class InputFrame(Frame):
         self.input_fields = []
 
             # Common
-        common_params_frame = ttk.LabelFrame(self, labelwidget=Label(self, text='Common',
-                                                                     font=('Times', 10, 'italic')),
-                                             labelanchor=N, style='Clr.TLabelframe')
+        common_params_frame = LabelFrame(self, labelwidget=Label(self, text='Common', font=('Times', 10, 'italic')),
+                                         labelanchor=N)
         common_params_frame.pack(side=TOP, padx=2, pady=2, fill=X)
         common_params_frame.columnconfigure(0, weight=1)
 
         Label(common_params_frame, text='Module').grid(row=0, column=0, padx=2, pady=2, sticky=W)
         self.module = EntryValid(common_params_frame, check_pos_finite, width=6, justify='right')
         self.module.grid(row=0, column=1, padx=2, pady=2, sticky=E)
+        self.module.insert(END, '10')
 
         Label(common_params_frame, text='Pressure angle').grid(row=1, column=0, padx=2, pady=2, sticky=W)
         self.pressure_angle = EntryValid(common_params_frame, check_90_deg, width=6, justify='right')
         self.pressure_angle.grid(row=1, column=1, padx=2, pady=2, sticky=E)
+        self.pressure_angle.insert(END, '20')
+
+        Label(common_params_frame, text='Second gear').grid(row=2, column=0, padx=2, pady=2, sticky=W)
+        self.has_gear1 = IntVar()
+        self.gear1_cb = Checkbutton(common_params_frame, variable=self.has_gear1, selectcolor='lemon chiffon')
+        self.gear1_cb.grid(row=2, column=1, padx=2, pady=2, sticky=E)
+        self.has_gear1.trace('w', self.checkbtn_callback)
 
             # Gear 1
-        params0_frame = ttk.LabelFrame(self, labelwidget=Label(self, text='Gear 1',
-                                                                     font=('Times', 10, 'italic')),
-                                       labelanchor=N, style='Clr.TLabelframe')
+        params0_frame = LabelFrame(self, labelwidget=Label(self, text='Gear 1', font=('Times', 10, 'italic')),
+                                   labelanchor=N)
         params0_frame.pack(side=TOP, padx=2, pady=2, fill=X)
         params0_frame.columnconfigure(0, weight=1)
 
         Label(params0_frame, text='Number of teeth').grid(row=0, column=0, padx=2, pady=2, sticky=W)
         self.tooth_num0 = EntryValid(params0_frame, check_pos_int, width=6, justify='right')
         self.tooth_num0.grid(row=0, column=1, padx=2, pady=2, sticky=E)
+        self.tooth_num0.insert(END, '40')
 
         Label(params0_frame, text='Addendum').grid(row=1, column=0, padx=2, pady=2, sticky=W)
-        self.addendum0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
-        self.addendum0.grid(row=1, column=1, padx=2, pady=2, sticky=E)
+        self.ad_coef0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
+        self.ad_coef0.grid(row=1, column=1, padx=2, pady=2, sticky=E)
+        self.ad_coef0.insert(END, '1')
 
         Label(params0_frame, text='Dedendum').grid(row=2, column=0, padx=2, pady=2, sticky=W)
-        self.dedendum0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
-        self.dedendum0.grid(row=2, column=1, padx=2, pady=2, sticky=E)
+        self.de_coef0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
+        self.de_coef0.grid(row=2, column=1, padx=2, pady=2, sticky=E)
+        self.de_coef0.insert(END, '1')
+
+            # Gear 2
+        params1_frame = LabelFrame(self, labelwidget=Label(self, text='Gear 2', font=('Times', 10, 'italic')),
+                                   labelanchor=N)
+        params1_frame.pack(side=TOP, padx=2, pady=2, fill=X)
+        params1_frame.columnconfigure(0, weight=1)
+
+        Label(params1_frame, text='Number of teeth').grid(row=0, column=0, padx=2, pady=2, sticky=W)
+        self.tooth_num1 = EntryValid(params1_frame, check_pos_int, width=6, justify='right')
+        self.tooth_num1.grid(row=0, column=1, padx=2, pady=2, sticky=E)
+        self.tooth_num1.insert(END, '40')
+
+        Label(params1_frame, text='Addendum').grid(row=1, column=0, padx=2, pady=2, sticky=W)
+        self.ad_coef1 = EntryValid(params1_frame, check_pos_finite, width=6, justify='right')
+        self.ad_coef1.grid(row=1, column=1, padx=2, pady=2, sticky=E)
+        self.ad_coef1.insert(END, '1')
+
+        Label(params1_frame, text='Dedendum').grid(row=2, column=0, padx=2, pady=2, sticky=W)
+        self.de_coef1 = EntryValid(params1_frame, check_pos_finite, width=6, justify='right')
+        self.de_coef1.grid(row=2, column=1, padx=2, pady=2, sticky=E)
+        self.de_coef1.insert(END, '1')
 
         self.input_fields = get_entry_valid_recur(self)
+        self.gear1_inputs = get_entry_valid_recur(params1_frame)
+        self.checkbtn_callback()
 
     def input_callback(self):
         if self.input_fields:
@@ -166,6 +210,11 @@ class InputFrame(Frame):
                 self.master.master.toolbar.activate()
             else:
                 self.master.master.toolbar.deactivate()
+
+    def checkbtn_callback(self, *args):
+        state = NORMAL if self.has_gear1.get() else DISABLED
+        for input_field in self.gear1_inputs:
+            input_field.config(state=state)
 
 
 class GearsApp(Tk):
@@ -177,8 +226,6 @@ class GearsApp(Tk):
         self.title('GEARS')
         self.geometry('1000x800')
         self.resizable(True, True)
-        self.style = ttk.Style()
-        self.style.theme_use('classic')
 
         # Frames
         main_frame = Frame(self)
@@ -190,15 +237,14 @@ class GearsApp(Tk):
             # Plots frame
         plots_frame = Frame(main_frame)
         plots_frame.pack(side=LEFT, fill=BOTH, expand=True)
-        self.globplot_frame = ttk.LabelFrame(plots_frame, labelwidget=Label(plots_frame, text='Simulation',
-                                             font=('Times', 10, 'italic')), labelanchor=N, style='Clr.TLabelframe')
+        self.globplot_frame = LabelFrame(plots_frame, labelwidget=Label(plots_frame, text='Simulation',
+                                         font=('Times', 10, 'italic')), labelanchor=N)
         self.globplot_frame.pack(padx=2, pady=2, ipady=0, fill=BOTH, expand=True)
 
                 # Matplotlib canvas
         self.fig = Figure(figsize=(10, 8))
         self.fig.set_tight_layout(True)
         self.fig.set_facecolor(self.cget("background"))
-        # self.fig.set_facecolor('r')
         self.ax = self.fig.add_subplot()
         self.ax.set_aspect('equal', 'box')
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.globplot_frame)
@@ -208,11 +254,10 @@ class GearsApp(Tk):
         self.ax.set_ylim((0, 1))
         self.toolbar = ToolbarPlayer(self.canvas, self.globplot_frame, self.play, self.next_frame, self.pause,
                                      self.resume, self.stop)
-        self.canvas.get_tk_widget().pack(side=TOP, padx=2, pady=0, fill=BOTH, expand=1)
+        self.canvas.get_tk_widget().pack(side=TOP, padx=0, pady=1, fill=BOTH, expand=1)
         self.canvas.mpl_connect("key_press_event", self.on_key_press)
 
-        # self.tooth0 = HalfTooth(tooth_num=18, module=10, de_coef=1)
-        self.tooth1 = HalfTooth(tooth_num=61, module=10, de_coef=1)
+        self.inputs.input_callback()
         self.delay_ms = 1
         self.after_id = None
         self.has_gear0 = True
@@ -232,8 +277,22 @@ class GearsApp(Tk):
     # Button callbacks
     def play(self, event=None):
         self.break_loop()
-        self.toolbar.play_cfg()
-        self.tooth0 = HalfTooth(tooth_num=int(self.inputs.tooth_num0.strvar.get()), module=10, de_coef=float(self.inputs.dedendum0.strvar.get()))
+        self.toolbar.play_state()
+        module = float(self.inputs.module.strvar.get())
+        pressure_angle = np.deg2rad(float(self.inputs.pressure_angle.strvar.get()))
+        self.tooth0 = HalfTooth(tooth_num=int(self.inputs.tooth_num0.strvar.get()),
+                                module=module,
+                                pressure_angle=pressure_angle,
+                                ad_coef=float(self.inputs.ad_coef0.strvar.get()),
+                                de_coef=float(self.inputs.de_coef0.strvar.get()))
+
+        # self.tooth1 = HalfTooth(tooth_num=61, module=module, pressure_angle=pressure_angle, de_coef=1)
+        self.tooth1 = HalfTooth(tooth_num=int(self.inputs.tooth_num1.strvar.get()),
+                                module=module,
+                                pressure_angle=pressure_angle,
+                                ad_coef=float(self.inputs.ad_coef1.strvar.get()),
+                                de_coef=float(self.inputs.de_coef1.strvar.get()))
+
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
         if self.has_gear0:
@@ -270,10 +329,10 @@ class GearsApp(Tk):
 
     def pause(self, event=None):
         self.break_loop()
-        self.toolbar.pause_cfg()
+        self.toolbar.pause_state()
 
     def resume(self, event=None):
-        self.toolbar.resume_cfg()
+        self.toolbar.resume_state()
         self.show_next_frame()
 
     def stop(self):
@@ -300,7 +359,7 @@ class GearsApp(Tk):
         """Restore initial appearance"""
         [patch.remove() for patch in self.ax.patches]
         [self.plot_data(line, [], []) for line in self.ax.lines]
-        self.toolbar.reset_cfg()
+        self.toolbar.reset_state()
 
 
 if __name__ == '__main__':

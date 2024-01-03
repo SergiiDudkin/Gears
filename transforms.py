@@ -167,16 +167,6 @@ def populate_circ(in_x, in_y, num):
 
 
 def is_within_ang(q_ang, st_ang, en_ang):
-    # if st_ang < en_ang:
-    #     res = st_ang < q_ang and q_ang <= en_ang
-    # else:
-    #     res = st_ang < q_ang or q_ang <= en_ang
-    # return res
-
-    # return st_ang < q_ang and q_ang <= en_ang if st_ang < en_ang else st_ang < q_ang or q_ang <= en_ang
-
-    # return np.where(st_ang < en_ang, (st_ang < q_ang) & (q_ang <= en_ang), (st_ang < q_ang) | (q_ang <= en_ang))
-
     operator = np.bitwise_and if st_ang < en_ang else np.bitwise_or
     return operator(st_ang <= q_ang, q_ang < en_ang)
 
