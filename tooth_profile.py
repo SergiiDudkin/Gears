@@ -59,7 +59,6 @@ class HalfTooth(GearParams):
                                        self.dedendum)
 
     def _build_half_tooth(self):
-        self.tooth_angle = 2 * np.pi / self.tooth_num
         self.quater_angle = self.tooth_angle / 4
 
         # Get points of involute

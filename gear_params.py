@@ -63,6 +63,7 @@ class GearParams:
         self._calc_dedendum()
         self._calc_root_diameter()
         self._calc_base_diameter()
+        self._calc_tooth_angle()
 
         self.attrs_to_print = ['pitch_diameter', 'outside_diameter', 'root_diameter', 'base_diameter', 'addendum',
                                'dedendum']
@@ -84,6 +85,9 @@ class GearParams:
 
     def _calc_base_diameter(self):
         self.base_diameter = self.pitch_diameter * np.cos(self.pressure_angle)
+
+    def _calc_tooth_angle(self):
+        self.tooth_angle = 2 * np.pi / self.tooth_num
 
     def diameters_to_radii(self):
         dict_of_attrs = self.__dict__.copy()

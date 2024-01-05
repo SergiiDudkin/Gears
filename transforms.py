@@ -59,7 +59,7 @@ def make_angrad_func(func):
         Explicit function f(radius) -> angle. It uses iterative algorithm, similar to binary search.
 
         Args:
-            r (float): Radial distance.
+            rad (float): Radial distance.
             t_min (float): Known minimum.
             t_max (float): Approximate maximum.
             *args: Other args for func.
