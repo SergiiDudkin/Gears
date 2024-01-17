@@ -1,7 +1,7 @@
 import numpy as np
 from plots import simple_plot, multiple_plot
 from curves import involute, epitrochoid, epitrochoid_flat
-from gear_params import STANDARD_PRESSURE_ANGLE, get_gear_params, print_gear_params, GearParams
+from gear_params import STANDARD_PRESSURE_ANGLE, GearParams
 from transforms import mirror, make_angrad_func, cartesian_to_polar, populate_circ, equidistant
 # from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, HalfTooth
 from tooth_profile import HalfTooth
@@ -171,16 +171,16 @@ if function == 'GearParams':
 
 if function == 'HalfTooth':
     tooth = HalfTooth(tooth_num=18, module=10, de_coef=1)
-    hta = cartesian_to_polar(*tooth.half_tooth_profile)[0]
+    # hta = cartesian_to_polar(*tooth.half_tooth_profile)[0]
     # print(hta[-1] - hta[0])
-    fta = cartesian_to_polar(*tooth.full_tooth_profile)[0]
+    # fta = cartesian_to_polar(*tooth.full_tooth_profile)[0]
     # print(fta[-1] - fta[0])
     # print(fta[0], fta[-1])
-    # simple_plot(*tooth.half_tooth_profile, 'Half tooth profile')
+    simple_plot(*tooth.half_tooth_profile, 'Half tooth profile')
     # simple_plot(*tooth.full_tooth_profile, 'Full tooth profile')
 
-    sector_pts = tooth.get_sector_profile(np.pi * 0.5, np.pi + tooth.tooth_angle / 4, tooth.tooth_angle * 0.1)
-    simple_plot(*sector_pts, 'Sector profile')
+    # sector_pts = tooth.get_sector_profile(np.pi * 0.5, np.pi + tooth.tooth_angle / 4, tooth.tooth_angle * 0.1)
+    # simple_plot(*sector_pts, 'Sector profile')
     # print(tooth)
     # points = tooth.get_gear_profile()
     # simple_plot(*points, 'Gear profile')

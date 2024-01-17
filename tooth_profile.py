@@ -14,13 +14,13 @@ class HalfTooth(GearParams):
         self.cutter_teeth_num = cutter_teeth_num
         self.step = step
         self.tolerance = tolerance
-        self.diameters_to_radii()
+        # self.diameters_to_radii()
         self._calc_invol_epitr_flat()
         self._build_half_tooth()
 
     def _calc_invol_epitr_flat(self):
         self.invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
-        self.invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / self.invol_epitr_rad) + self.pressure_angle
+        self.invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / self.invol_epitr_rad) + self.pressure_angle  # ToDo: Delete dead code line!
 
     def _calc_invol_epitr(self):
         # Solve the first triangle using law of sines
@@ -41,7 +41,7 @@ class HalfTooth(GearParams):
 
         # Find angle using law of cosines
         beta_ = np.arccos((a_ ** 2 + c_ ** 2 - b_ ** 2) / (2 * a_ * c_))
-        self.invol_epitr_angle = beta + beta_
+        self.invol_epitr_angle = beta + beta_  # ToDo: Delete dead code line!
 
     def _get_involute_points(self):
         self.involute_angrad = make_angrad_func(involute)
