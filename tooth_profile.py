@@ -14,20 +14,25 @@ class HalfTooth(GearParams):
         self.cutter_teeth_num = cutter_teeth_num
         self.step = step
         self.tolerance = tolerance
-        # self.diameters_to_radii()
         self._calc_invol_epitr_flat()
-        self._build_half_tooth()
+        print(f'self.invol_epitr_rad: {self.invol_epitr_rad}')
+        print(f'self.invol_epitr_angle: {np.rad2deg(self.invol_epitr_angle)}')
+        print(f'self.base_radius: {self.base_radius}')
+        # print(180 - (np.rad2deg(self.invol_epitr_angle) + (90 - np.rad2deg(self.pressure_angle))))
+        self._calc_epitrochoid_shift_ang()
+        self.involute_epitrochoid_intersection_demo()
+        # self._build_half_tooth()
 
     def _calc_invol_epitr_flat(self):
         self.invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
-        self.invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / self.invol_epitr_rad) + self.pressure_angle  # ToDo: Delete dead code line!
+        self.invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / self.invol_epitr_rad) + self.pressure_angle  # ToDo: Use it as tooth undercut detector (if < pi / 2).
 
     def _calc_invol_epitr(self):
         # Solve the first triangle using law of sines
         b = self.cutter_teeth_num * self.module / 2  # Cutting gear pitch radius
         a = b + self.dedendum
         alpha = np.pi / 2 + self.pressure_angle
-        R2t = a / np.sin(alpha)
+        R2t = a / np.sin(alpha)  # Radius of the triangle's circumcircle times 2
         beta = np.arcsin(b / R2t)  # Angle beta is guarantied to be acute
         gamma = np.pi - alpha - beta
         c = R2t * np.sin(gamma)
@@ -38,10 +43,8 @@ class HalfTooth(GearParams):
         alpha_ = np.pi / 2 - self.pressure_angle
         a_ = np.sqrt(b_ ** 2 + c_ ** 2 - 2 * b_ * c_ * np.cos(alpha_))
         self.invol_epitr_rad = a_
-
-        # Find angle using law of cosines
         beta_ = np.arccos((a_ ** 2 + c_ ** 2 - b_ ** 2) / (2 * a_ * c_))
-        self.invol_epitr_angle = beta + beta_  # ToDo: Delete dead code line!
+        self.invol_epitr_angle = beta  # ToDo: Use it as tooth undercut detector (if < pi / 2).
 
     def _get_involute_points(self):
         self.involute_angrad = make_angrad_func(involute)
@@ -68,6 +71,7 @@ class HalfTooth(GearParams):
         ang_pitch = involute_points[1][0]
         t_outside = involute_points[2][3]
         ang_outside = involute_points[2][0]
+        # print(f'ang_outside - ang_pitch: {ang_outside - ang_pitch}')
         points_involute = equidistant(involute, t_inv_epitr, t_outside, self.step, self.tolerance, r=self.base_radius,
                                       a0=-ang_pitch)
 
@@ -86,6 +90,38 @@ class HalfTooth(GearParams):
                                   r=self.root_radius, a0=0)
 
         self.half_tooth_profile = stack_curves(points_root, points_epitrochoid_flat, points_involute, points_outside)
+
+    def _calc_epitrochoid_shift_ang(self):
+        involute_angrad = make_angrad_func(involute)  # ToDo: This function should be global.
+
+        gear_ratio = self.cutter_teeth_num / self.tooth_num
+        cutter_base_radius = self.base_radius * gear_ratio
+        self.cutter_pitch_radius = self.pitch_radius * gear_ratio
+        self.cutter_outside_radius = self.cutter_pitch_radius + self.dedendum
+        # print(f'''
+        # self.pitch_radius: {self.pitch_radius}
+        # cutter_base_radius: {cutter_base_radius}
+        # cutter_pitch_radius: {cutter_pitch_radius}
+        # cutter_outside_radius: {cutter_outside_radius}
+        # ''')
+
+        pitch_ang = involute_angrad(self.cutter_pitch_radius, 0, 2, cutter_base_radius)[0]
+        outside_ang = involute_angrad(self.cutter_outside_radius, 0, 2, cutter_base_radius)[0]
+        self.epitrochoid_shift_ang = (outside_ang - pitch_ang) * gear_ratio
+        print(f'self.epitrochoid_shift_ang: {self.epitrochoid_shift_ang}')
+
+    def involute_epitrochoid_intersection_demo(self):
+        # Get points of involute
+        involute_points = self._get_involute_points()
+        ang_pitch = involute_points[1][0]
+        t_outside = involute_points[2][3]
+        self.raw_involute = equidistant(involute, 0, t_outside, self.step, self.tolerance, r=self.base_radius,
+                                      a0=-ang_pitch)
+
+        rot_ang = -self.epitrochoid_shift_ang
+        self.raw_epitrochoid = equidistant(epitrochoid, 0, -1, self.step, self.tolerance, R=self.pitch_radius,
+                                           r=self.cutter_pitch_radius, d=self.cutter_outside_radius, a0=rot_ang)
+# epitrochoid(t, R, r, d, a0=0)
 
 
 class GearSector:
