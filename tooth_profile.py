@@ -15,13 +15,8 @@ class HalfTooth(GearParams):
         self.step = step
         self.tolerance = tolerance
         self._calc_invol_epitr_flat()
-        print(f'self.invol_epitr_rad: {self.invol_epitr_rad}')
-        print(f'self.invol_epitr_angle: {np.rad2deg(self.invol_epitr_angle)}')
-        print(f'self.base_radius: {self.base_radius}')
-        # print(180 - (np.rad2deg(self.invol_epitr_angle) + (90 - np.rad2deg(self.pressure_angle))))
-        self._calc_epitrochoid_shift_ang()
+        self._calc_profile_params()
         self.involute_epitrochoid_intersection_demo()
-        self._find_involute_epitrochoid_intersection()
         # self._build_half_tooth()
 
     def _calc_invol_epitr_flat(self):
@@ -72,7 +67,6 @@ class HalfTooth(GearParams):
         ang_pitch = involute_points[1][0]
         t_outside = involute_points[2][3]
         ang_outside = involute_points[2][0]
-        # print(f'ang_outside - ang_pitch: {ang_outside - ang_pitch}')
         points_involute = equidistant(involute, t_inv_epitr, t_outside, self.step, self.tolerance, r=self.base_radius,
                                       a0=-ang_pitch)
 
@@ -94,36 +88,30 @@ class HalfTooth(GearParams):
 
     def _calc_epitrochoid_shift_ang(self):
         involute_angrad = make_angrad_func(involute)  # ToDo: This function should be global.
-
         gear_ratio = self.cutter_teeth_num / self.tooth_num
         cutter_base_radius = self.base_radius * gear_ratio
         self.cutter_pitch_radius = self.pitch_radius * gear_ratio
         self.cutter_outside_radius = self.cutter_pitch_radius + self.dedendum
-        # print(f'''
-        # self.pitch_radius: {self.pitch_radius}
-        # cutter_base_radius: {cutter_base_radius}
-        # cutter_pitch_radius: {cutter_pitch_radius}
-        # cutter_outside_radius: {cutter_outside_radius}
-        # ''')
-
         pitch_ang = involute_angrad(self.cutter_pitch_radius, 0, 2, cutter_base_radius)[0]
         outside_ang = involute_angrad(self.cutter_outside_radius, 0, 2, cutter_base_radius)[0]
         self.epitrochoid_shift_ang = (outside_ang - pitch_ang) * gear_ratio
-        print(f'self.epitrochoid_shift_ang: {self.epitrochoid_shift_ang}')
+
+    def _calc_profile_params(self):
+        self.involute_lims = [None, None]
+        self.epitrochoid_lims = [0, None]
+
+        self._calc_epitrochoid_shift_ang()
+        involute_points = self._get_involute_points()
+        self.involute_lims[1] = involute_points[2][3]
+        self._set_involute_params(r=self.base_radius, a0=-involute_points[1][0])
+        self._set_epitrochoid_params(R=self.pitch_radius, r=self.cutter_pitch_radius, d=self.cutter_outside_radius,
+                                     a0=-self.epitrochoid_shift_ang)
+
+        self._find_involute_epitrochoid_intersection()
 
     def involute_epitrochoid_intersection_demo(self):
-        # Get points of involute
-        involute_points = self._get_involute_points()
-        ang_pitch = involute_points[1][0]
-        t_outside = involute_points[2][3]
-        self._set_involute_params(r=self.base_radius, a0=-ang_pitch)
-        self.raw_involute = equidistant(involute, 0, t_outside, self.step, self.tolerance, **self.involute_params)
-
-        rot_ang = -self.epitrochoid_shift_ang
-        self._set_epitrochoid_params(R=self.pitch_radius, r=self.cutter_pitch_radius, d=self.cutter_outside_radius,
-                                     a0=rot_ang)
-        self.raw_epitrochoid = equidistant(epitrochoid, 0, -1, self.step, self.tolerance, **self.epitrochoid_params)
-# epitrochoid(t, R, r, d, a0=0)
+        self.raw_involute = equidistant(involute, self.involute_lims[0], self.involute_lims[1], self.step, self.tolerance, **self.involute_params)
+        self.raw_epitrochoid = equidistant(epitrochoid, self.epitrochoid_lims[0], self.epitrochoid_lims[1], self.step, self.tolerance, **self.epitrochoid_params)
 
     def _set_involute_params(self, r, a0):
         self.involute_params = {
@@ -142,24 +130,13 @@ class HalfTooth(GearParams):
     def _find_involute_epitrochoid_intersection(self):
         involute_angrad = make_angrad_func(involute)  # ToDo: This function should be global.
         epitrochoid_angrad = make_angrad_func(epitrochoid)  # ToDo: This function should be global.
-        ang, x, y, t_curr = epitrochoid_angrad(self.outside_radius, 0, -2, **self.epitrochoid_params)
-        print(f'rad: {self.outside_radius}, ang: {ang}, x: {x}, y: {y}, t_curr: {t_curr}')
         r_min = self.base_radius
         r_max = self.outside_radius
 
         for _ in range(100):
-            # print(f'_: {_}')
-            # xy0 = np.array(involute_angrad(r_min, 0, 1, **self.involute_params)[1:3])
-            # xy1 = np.array(involute_angrad(r_max, 0, 1, **self.involute_params)[1:3])
-            # xy2 = np.array(epitrochoid_angrad(r_min, 0, -1, **self.epitrochoid_params)[1:3])
-            # xy3 = np.array(epitrochoid_angrad(r_max, 0, -1, **self.epitrochoid_params)[1:3])
-            # xy_intersection_pt = line_line_intersection(xy0, xy1, xy2, xy3)
-            # r_curr = cartesian_to_polar(*xy_intersection_pt)[1]
-            # if not (r_min < r_curr < r_max):
-            #     r_curr = np.mean([r_min, r_max])
             r_curr = np.mean([r_min, r_max])
-            involute_ang = involute_angrad(r_curr, 0, 1, **self.involute_params)[0]
-            epitrochoid_ang = epitrochoid_angrad(r_curr, 0, -1, **self.epitrochoid_params)[0]
+            involute_ang, _, _, involute_t_min = involute_angrad(r_curr, 0, 1, **self.involute_params)
+            epitrochoid_ang, _, _, epitrochoid_t_max = epitrochoid_angrad(r_curr, 0, -1, **self.epitrochoid_params)
             if involute_ang == epitrochoid_ang or not (r_min < r_curr < r_max):
                 break
             if involute_ang < epitrochoid_ang:
@@ -169,10 +146,10 @@ class HalfTooth(GearParams):
         else:
             print('!!! WARNING! Number of iteration exceeded the limit.')
 
-        # print(f'x: {xy_intersection_pt[0]}, y: {xy_intersection_pt[1]}')
-        print(f'involute_ang: {involute_ang}, epitrochoid_ang: {epitrochoid_ang}')
-        print(f'r_min {r_min}, r_curr {r_curr}, r_max {r_max}')
-        print(polar_to_cartesian(involute_ang, r_curr))
+        self.involute_lims[0] = involute_t_min
+        self.epitrochoid_lims[1] = epitrochoid_t_max
+        return r_curr
+
 
 class GearSector:
     def __init__(self, halftooth0, halftooth1, step_cnt=100, sector=(0, np.pi), rot_ang=0, is_acw=False):
