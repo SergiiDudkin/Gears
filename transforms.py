@@ -182,18 +182,3 @@ def upd_xy_lims(x, y, min_x, min_y, max_x, max_y):
 
 def merge_xy_lims(min_x0, min_y0, max_x0, max_y0, min_x1, min_y1, max_x1, max_y1):
     return min(min_x0, min_x1), min(min_y0, min_y1), max(max_x0, max_x1), max(max_y0, max_y1)
-
-
-def vec_cross_prod(yx0, yx1):
-    return yx0[1] * yx1[0] - yx1[1] * yx0[0]
-
-
-def line_line_intersection(yx0, yx1, yx2, yx3):
-    """Find intersection of two lines"""
-    a = vec_cross_prod(yx0, yx1)
-    d = vec_cross_prod(yx2, yx3)
-    e, b = yx2 - yx3
-    f, c = yx0 - yx1
-    g = c * e - f * b
-    assert g  # Check if g == 0 before division
-    return np.array([(a * e - f * d), (a * b - c * d)]) / g  # y, x

@@ -171,9 +171,9 @@ if function == 'GearParams':
 
 if function == 'HalfTooth':
     tooth = HalfTooth(tooth_num=6, module=10, de_coef=1, cutter_teeth_num=1000)
-    # simple_plot(*tooth.half_tooth_profile, 'Half tooth profile')
+    simple_plot(*tooth.half_tooth_profile, 'Half tooth profile')
     # simple_plot(*rotate(*tooth.half_tooth_profile, -0.05318327339532436))
-    multiple_plot([(tooth.raw_involute, 'involute'), (tooth.raw_epitrochoid, 'raw_epitrochoid')])
+    # multiple_plot([(tooth.raw_involute, 'involute'), (tooth.raw_epitrochoid, 'raw_epitrochoid')])
     # multiple_plot([(tooth.raw_involute, 'involute'), (tooth.raw_epitrochoid, 'raw_epitrochoid'),
     #                (tooth.half_tooth_profile, 'half_tooth_profile')])
 
