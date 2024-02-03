@@ -216,6 +216,39 @@ class InputFrame(Frame):
         for input_field in self.gear1_inputs:
             input_field.config(state=state)
 
+    # Value getters
+    @property
+    def module_val(self):
+        return float(self.module.strvar.get())
+
+    @property
+    def pressure_angle_val(self):
+        return np.deg2rad(float(self.pressure_angle.strvar.get()))
+
+    @property
+    def tooth_num0_val(self):
+        return int(self.tooth_num0.strvar.get())
+
+    @property
+    def ad_coef0_val(self):
+        return float(self.ad_coef0.strvar.get())
+
+    @property
+    def de_coef0_val(self):
+        return float(self.de_coef0.strvar.get())
+
+    @property
+    def tooth_num1_val(self):
+        return int(self.tooth_num1.strvar.get())
+
+    @property
+    def ad_coef1_val(self):
+        return float(self.ad_coef1.strvar.get())
+
+    @property
+    def de_coef1_val(self):
+        return float(self.de_coef1.strvar.get())
+
 
 class GearsApp(Tk):
     """Gears app with GUI"""
@@ -278,25 +311,24 @@ class GearsApp(Tk):
     def play(self, event=None):
         self.break_loop()
         self.toolbar.play_state()
-        module = float(self.inputs.module.strvar.get())
-        pressure_angle = np.deg2rad(float(self.inputs.pressure_angle.strvar.get()))
-        self.tooth0 = HalfTooth(tooth_num=int(self.inputs.tooth_num0.strvar.get()),
-                                module=module,
-                                pressure_angle=pressure_angle,
-                                ad_coef=float(self.inputs.ad_coef0.strvar.get()),
-                                de_coef=float(self.inputs.de_coef0.strvar.get()))
 
-        # self.tooth1 = HalfTooth(tooth_num=61, module=module, pressure_angle=pressure_angle, de_coef=1)
-        self.tooth1 = HalfTooth(tooth_num=int(self.inputs.tooth_num1.strvar.get()),
-                                module=module,
-                                pressure_angle=pressure_angle,
-                                ad_coef=float(self.inputs.ad_coef1.strvar.get()),
-                                de_coef=float(self.inputs.de_coef1.strvar.get()))
+        self.tooth0 = HalfTooth(tooth_num=self.inputs.tooth_num0_val,
+                                module=self.inputs.module_val,
+                                pressure_angle=self.inputs.pressure_angle_val,
+                                ad_coef=self.inputs.ad_coef0_val,
+                                de_coef=self.inputs.de_coef0_val,
+                                cutter_teeth_num=self.inputs.tooth_num1_val)
+        self.tooth1 = HalfTooth(tooth_num=self.inputs.tooth_num1_val,
+                                module=self.inputs.module_val,
+                                pressure_angle=self.inputs.pressure_angle_val,
+                                ad_coef=self.inputs.ad_coef1_val,
+                                de_coef=self.inputs.de_coef1_val,
+                                cutter_teeth_num=self.inputs.tooth_num0_val)
 
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
         if self.has_gear0:
-            self.gear_sector0 = GearSector(self.tooth0, self.tooth0, step_cnt=100, sector=(np.pi*1.75, np.pi*0.25),
+            self.gear_sector0 = GearSector(self.tooth0, self.tooth0, step_cnt=100, sector=(np.pi*1.5, np.pi*0.5),
                                            rot_ang=0, is_acw=False)
             self.rotating_gear_sector0 = iter(self.gear_sector0)
             ctr_circ = Circle((0, 0), self.gear_sector0.ht0.pitch_radius * 0.01, color='b')
@@ -305,7 +337,7 @@ class GearsApp(Tk):
             xy_lims = upd_xy_lims(0, 0, *xy_lims)
 
         if self.has_gear1:
-            self.gear_sector1 = GearSector(self.tooth1, self.tooth1, step_cnt=100, sector=(np.pi*0.75, np.pi*1.25),
+            self.gear_sector1 = GearSector(self.tooth1, self.tooth1, step_cnt=100, sector=(np.pi*0.5, np.pi*1.5),
                                            rot_ang=np.pi, is_acw=True)
             self.rotating_gear_sector1 = iter(self.gear_sector1)
             self.ctr_dist = self.gear_sector0.ht0.pitch_radius + self.gear_sector1.ht0.pitch_radius

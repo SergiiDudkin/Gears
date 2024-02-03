@@ -2,6 +2,7 @@ import numpy as np
 from transforms import make_angrad_func, mirror, populate_circ, equidistant, stack_curves, is_within_ang, rotate, cartesian_to_polar, polar_to_cartesian, upd_xy_lims
 from curves import circle, involute, epitrochoid, epitrochoid_flat
 from gear_params import GearParams, STANDARD_PRESSURE_ANGLE, STANDARD_ADDENDUM_COEF, STANDARD_DEDENDUM_COEF
+from plots import simple_plot, multiple_plot
 
 STEP = 0.1
 TOLERANCE = 0.1
@@ -112,6 +113,15 @@ class HalfTooth(GearParams):
             'r': self.root_radius,
             'a0': 0
         }
+
+        if False:
+            points_involute = equidistant(involute, 0, t_outside, self.step,
+                                          self.tolerance, **self.involute_params)
+            points_epitrochoid = equidistant(epitrochoid, 0, -0.5, self.step,
+                                             self.tolerance, **self.epitrochoid_params)
+            multiple_plot([(points_involute, 'involute'), (points_epitrochoid, 'epitrochoid')])
+
+
 
         involute_t_min, epitrochoid_t_max, r_curr = self._find_involute_epitrochoid_intersection()  # ToDo: Use r_curr or delete
 
