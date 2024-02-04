@@ -1,4 +1,5 @@
 import numpy as np
+from transforms import make_angrad_func
 
 
 def circle(t, r, a0=0):
@@ -62,3 +63,8 @@ def epitrochoid_flat(t, R, l, a0=0):
     x = (R - l) * np.cos(t_) + t * R * np.sin(t_)
     y = (R - l) * np.sin(t_) - t * R * np.cos(t_)
     return np.array([x, y])
+
+
+involute_angrad = make_angrad_func(involute)
+epitrochoid_angrad = make_angrad_func(epitrochoid)
+epitrochoid_flat_angrad = make_angrad_func(epitrochoid_flat)

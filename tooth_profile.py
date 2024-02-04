@@ -1,6 +1,6 @@
 import numpy as np
-from transforms import make_angrad_func, mirror, populate_circ, equidistant, stack_curves, is_within_ang, rotate, cartesian_to_polar, polar_to_cartesian, upd_xy_lims
-from curves import circle, involute, epitrochoid, epitrochoid_flat
+from transforms import mirror, populate_circ, equidistant, stack_curves, is_within_ang, rotate, cartesian_to_polar, polar_to_cartesian, upd_xy_lims
+from curves import circle, involute, epitrochoid, epitrochoid_flat, involute_angrad, epitrochoid_angrad, epitrochoid_flat_angrad
 from gear_params import GearParams, STANDARD_PRESSURE_ANGLE, STANDARD_ADDENDUM_COEF, STANDARD_DEDENDUM_COEF
 from plots import simple_plot, multiple_plot
 
@@ -42,21 +42,18 @@ class HalfTooth(GearParams):
         a_ = np.sqrt(b_ ** 2 + c_ ** 2 - 2 * b_ * c_ * np.cos(alpha_))
         self.invol_epitr_rad = a_
         beta_ = np.arccos((a_ ** 2 + c_ ** 2 - b_ ** 2) / (2 * a_ * c_))
-        self.invol_epitr_angle = beta  # ToDo: Use it as tooth undercut detector (if < pi / 2).
+        self.invol_epitr_angle = beta_  # ToDo: Use it as tooth undercut detector (if < pi / 2).
 
     def _get_involute_points(self):
-        self.involute_angrad = make_angrad_func(involute)  # ToDo: This function should be global.
-        return [self.involute_angrad(rad, 0, 2, self.base_radius) for rad in (self.invol_epitr_rad, self.pitch_radius,
+        return [involute_angrad(rad, 0, 2, self.base_radius) for rad in (self.invol_epitr_rad, self.pitch_radius,
                                                                               self.outside_radius)]
 
     def _get_epitrochoid_flat_point(self):
-        self.epitrochoid_flat_angrad = make_angrad_func(epitrochoid_flat)  # ToDo: This function should be global.
-        return self.epitrochoid_flat_angrad(self.invol_epitr_rad, 0, 2, self.pitch_radius, self.dedendum)
+        return epitrochoid_flat_angrad(self.invol_epitr_rad, 0, 2, self.pitch_radius, self.dedendum)
 
     def _get_epitrochoid_point(self):
-        self.epitrochoid_angrad = make_angrad_func(epitrochoid)
         pitch_radius2 = self.cutter_teeth_num * self.module / 2  # Cutting gear pitch radius
-        return self.epitrochoid_angrad(self.invol_epitr_rad, 0, 2, self.pitch_radius, pitch_radius2, pitch_radius2 +
+        return epitrochoid_angrad(self.invol_epitr_rad, 0, 2, self.pitch_radius, pitch_radius2, pitch_radius2 +
                                        self.dedendum)
 
     def _build_half_tooth(self):
@@ -115,15 +112,24 @@ class HalfTooth(GearParams):
         }
 
         if False:
-            points_involute = equidistant(involute, 0, t_outside, self.step,
+            points_involute = equidistant(involute, 0, t_outside, self.step / 10,
                                           self.tolerance, **self.involute_params)
-            points_epitrochoid = equidistant(epitrochoid, 0, -0.5, self.step,
+            points_epitrochoid = equidistant(epitrochoid, 0, -0.5, self.step / 10,
                                              self.tolerance, **self.epitrochoid_params)
-            multiple_plot([(points_involute, 'involute'), (points_epitrochoid, 'epitrochoid')])
+            self._calc_invol_epitr()
+            print(f'self.invol_epitr_angle / np.pi {self.invol_epitr_angle / np.pi}')
+            print(f'undercut, method 1: {self.invol_epitr_angle * 2 < np.pi}')
+            epitrochoid_ang, _, _, _ = epitrochoid_angrad(self.base_radius, 0, -1, **self.epitrochoid_params)
+            print(f'undercut, method 2: {epitrochoid_ang > -ang_pitch}')
+            points_contact = equidistant(circle, np.pi * 1.9, np.pi * 1.9999, self.step / 10,
+                                         self.tolerance, r=self.invol_epitr_rad, a0=0)
+            multiple_plot([(points_involute, 'involute'), (points_epitrochoid, 'epitrochoid'), (points_contact, 'contact')])
 
-
-
-        involute_t_min, epitrochoid_t_max, r_curr = self._find_involute_epitrochoid_intersection()  # ToDo: Use r_curr or delete
+        self._calc_invol_epitr()
+        if self.invol_epitr_angle * 2 < np.pi:
+            involute_t_min, epitrochoid_t_max, r_curr = self._find_involute_epitrochoid_intersection()  # ToDo: Use r_curr or delete
+        else:
+            involute_t_min, epitrochoid_t_max = self._find_involute_epitrochoid_contact()
 
         # Gather limits of curves
         self.involute_lims = [involute_t_min, t_outside]
@@ -132,7 +138,6 @@ class HalfTooth(GearParams):
         self.root_circle_lims = [-self.quater_angle, -epitrochoid_shift_ang]
 
     def _calc_epitrochoid_shift_ang(self):
-        involute_angrad = make_angrad_func(involute)  # ToDo: This function should be global.
         gear_ratio = self.cutter_teeth_num / self.tooth_num
         cutter_base_radius = self.base_radius * gear_ratio
         cutter_pitch_radius = self.pitch_radius * gear_ratio
@@ -143,7 +148,6 @@ class HalfTooth(GearParams):
         return epitrochoid_shift_ang, cutter_pitch_radius, cutter_outside_radius
 
     def _get_involute_points_(self):  # ToDo: Delete trailing underscore
-        involute_angrad = make_angrad_func(involute)  # ToDo: This function should be global.
         involute_points = [involute_angrad(rad, 0, 2, self.base_radius)
                            for rad in (self.pitch_radius, self.outside_radius)]
         ang_pitch = involute_points[0][0]
@@ -151,9 +155,12 @@ class HalfTooth(GearParams):
         ang_outside = involute_points[1][0]
         return ang_pitch, t_outside, ang_outside
 
+    def _find_involute_epitrochoid_contact(self):
+        involute_t_min = involute_angrad(self.invol_epitr_rad, 0, 1, **self.involute_params)[3]
+        epitrochoid_t_max = epitrochoid_angrad(self.invol_epitr_rad, 0, -1, **self.epitrochoid_params)[3]
+        return involute_t_min, epitrochoid_t_max
+
     def _find_involute_epitrochoid_intersection(self):
-        involute_angrad = make_angrad_func(involute)  # ToDo: This function should be global.
-        epitrochoid_angrad = make_angrad_func(epitrochoid)  # ToDo: This function should be global.
         r_min = self.base_radius
         r_max = self.outside_radius
 
