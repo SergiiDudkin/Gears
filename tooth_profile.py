@@ -15,15 +15,87 @@ class HalfTooth(GearParams):
         self.cutter_teeth_num = cutter_teeth_num
         self.step = step
         self.tolerance = tolerance
-        # self._calc_invol_epitr_flat()
+
+        self.is_rack = not cutter_teeth_num
+        self.my_epitrochoid = epitrochoid_flat if self.is_rack else epitrochoid
+        self.my_epitrochoid_angrad = epitrochoid_flat_angrad if self.is_rack else epitrochoid_angrad
+
         self._calc_profile_params()
-        # self.involute_epitrochoid_intersection_demo()
-        # self._build_half_tooth()
-        self._build_half_tooth_()
+        self._build_half_tooth()
+
+    def _calc_profile_params(self):
+        self.quater_angle = self.tooth_angle / 4
+
+        if self.is_rack:
+            epitrochoid_shift_ang = self._calc_epitrochoid_flat_shift_ang()
+        else:
+            epitrochoid_shift_ang, cutter_pitch_radius, cutter_outside_radius = self._calc_epitrochoid_shift_ang()
+        ang_pitch, t_outside, ang_outside = self._get_involute_points()
+
+        # Gather params of curves
+        self.involute_params = {
+            'r': self.base_radius,
+            'a0': -ang_pitch
+        }
+        self.epitrochoid_params = {
+            'R': self.pitch_radius,
+            'l': self.dedendum,
+            'a0': -epitrochoid_shift_ang
+        } if self.is_rack else {
+            'R': self.pitch_radius,
+            'r': cutter_pitch_radius,
+            'd': cutter_outside_radius,
+            'a0': -epitrochoid_shift_ang
+        }
+        self.outside_circle_params = {
+            'r': self.outside_radius,
+            'a0': 0
+        }
+        self.root_circle_params = {
+            'r': self.root_radius,
+            'a0': 0
+        }
+
+        invol_epitr_rad, invol_epitr_angle = self._calc_invol_epitr_flat() if self.is_rack else self._calc_invol_epitr()
+        if invol_epitr_angle * 2 < np.pi:
+            involute_t_min, epitrochoid_t_max, r_curr = self._find_involute_epitrochoid_intersection()  # ToDo: Use r_curr or delete
+        else:
+            involute_t_min, epitrochoid_t_max = self._find_involute_epitrochoid_contact(invol_epitr_rad)
+
+        # Gather limits of curves
+        self.involute_lims = [involute_t_min, t_outside]
+        self.epitrochoid_lims = [0, epitrochoid_t_max]
+        self.outside_circle_lims = [ang_outside - ang_pitch, self.quater_angle]
+        self.root_circle_lims = [-self.quater_angle, -epitrochoid_shift_ang]
+
+    def _calc_epitrochoid_flat_shift_ang(self):
+        circular_pitch = self.module * np.pi
+        proj_onto_rack = self.dedendum * np.tan(self.pressure_angle)
+        epitrochoid_shift_ang = self.tooth_angle * proj_onto_rack / circular_pitch
+        return epitrochoid_shift_ang
+
+    def _calc_epitrochoid_shift_ang(self):
+        gear_ratio = self.cutter_teeth_num / self.tooth_num
+        cutter_base_radius = self.base_radius * gear_ratio
+        cutter_pitch_radius = self.pitch_radius * gear_ratio
+        cutter_outside_radius = cutter_pitch_radius + self.dedendum
+        pitch_ang = involute_angrad(cutter_pitch_radius, 0, 2, cutter_base_radius)[0]
+        outside_ang = involute_angrad(cutter_outside_radius, 0, 2, cutter_base_radius)[0]
+        epitrochoid_shift_ang = (outside_ang - pitch_ang) * gear_ratio
+        return epitrochoid_shift_ang, cutter_pitch_radius, cutter_outside_radius
+
+    def _get_involute_points(self):
+        involute_points = [involute_angrad(rad, 0, 2, self.base_radius)
+                           for rad in (self.pitch_radius, self.outside_radius)]
+        ang_pitch = involute_points[0][0]
+        t_outside = involute_points[1][3]
+        ang_outside = involute_points[1][0]
+        return ang_pitch, t_outside, ang_outside
 
     def _calc_invol_epitr_flat(self):
-        self.invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
-        self.invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / self.invol_epitr_rad) + self.pressure_angle  # ToDo: Use it as tooth undercut detector (if < pi / 2).
+        invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
+        invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / invol_epitr_rad) + self.pressure_angle  # ToDo: Use it as tooth undercut detector (if < pi / 2).
+        return invol_epitr_rad, invol_epitr_angle
 
     def _calc_invol_epitr(self):
         # Solve the first triangle using law of sines
@@ -40,124 +112,13 @@ class HalfTooth(GearParams):
         b_ = self.pitch_radius
         alpha_ = np.pi / 2 - self.pressure_angle
         a_ = np.sqrt(b_ ** 2 + c_ ** 2 - 2 * b_ * c_ * np.cos(alpha_))
-        self.invol_epitr_rad = a_
         beta_ = np.arccos((a_ ** 2 + c_ ** 2 - b_ ** 2) / (2 * a_ * c_))
-        self.invol_epitr_angle = beta_  # ToDo: Use it as tooth undercut detector (if < pi / 2).
+        invol_epitr_rad, invol_epitr_angle = a_, beta_
+        return invol_epitr_rad, invol_epitr_angle
 
-    def _get_involute_points(self):
-        return [involute_angrad(rad, 0, 2, self.base_radius) for rad in (self.invol_epitr_rad, self.pitch_radius,
-                                                                              self.outside_radius)]
-
-    def _get_epitrochoid_flat_point(self):
-        return epitrochoid_flat_angrad(self.invol_epitr_rad, 0, 2, self.pitch_radius, self.dedendum)
-
-    def _get_epitrochoid_point(self):
-        pitch_radius2 = self.cutter_teeth_num * self.module / 2  # Cutting gear pitch radius
-        return epitrochoid_angrad(self.invol_epitr_rad, 0, 2, self.pitch_radius, pitch_radius2, pitch_radius2 +
-                                       self.dedendum)
-
-    def _build_half_tooth(self):
-        self.quater_angle = self.tooth_angle / 4
-
-        # Get points of involute
-        involute_points = self._get_involute_points()
-        ang_inv_epitr = involute_points[0][0]
-        t_inv_epitr = involute_points[0][3]
-        ang_pitch = involute_points[1][0]
-        t_outside = involute_points[2][3]
-        ang_outside = involute_points[2][0]
-        points_involute = equidistant(involute, t_inv_epitr, t_outside, self.step, self.tolerance, r=self.base_radius,
-                                      a0=-ang_pitch)
-
-        # Get points of epitrochoid flat
-        ang_epitr_inv, x, y, t_epitr_inv = self._get_epitrochoid_flat_point()
-        rot_ang = ang_epitr_inv + ang_inv_epitr - ang_pitch
-        points_epitrochoid_flat = equidistant(epitrochoid_flat, 0, -t_epitr_inv, self.step, self.tolerance,
-                                              R=self.pitch_radius, l=self.dedendum, a0=rot_ang)
-
-        # Get points of outside circle
-        points_outside = equidistant(circle, ang_outside - ang_pitch, self.quater_angle, self.step, self.tolerance,
-                                     r=self.outside_radius, a0=0)
-
-        # Get points of root circle
-        points_root = equidistant(circle, -self.quater_angle, rot_ang, self.step, self.tolerance,
-                                  r=self.root_radius, a0=0)
-
-        self.half_tooth_profile = stack_curves(points_root, points_epitrochoid_flat, points_involute, points_outside)
-
-    def _calc_profile_params(self):
-        self.quater_angle = self.tooth_angle / 4
-
-        epitrochoid_shift_ang, cutter_pitch_radius, cutter_outside_radius = self._calc_epitrochoid_shift_ang()
-        ang_pitch, t_outside, ang_outside = self._get_involute_points_()
-
-        # Gather params of curves
-        self.involute_params = {
-            'r': self.base_radius,
-            'a0': -ang_pitch
-        }
-        self.epitrochoid_params = {
-            'R': self.pitch_radius,
-            'r': cutter_pitch_radius,
-            'd': cutter_outside_radius,
-            'a0': -epitrochoid_shift_ang
-        }
-        self.outside_circle_params = {
-            'r': self.outside_radius,
-            'a0': 0
-        }
-        self.root_circle_params = {
-            'r': self.root_radius,
-            'a0': 0
-        }
-
-        if False:
-            points_involute = equidistant(involute, 0, t_outside, self.step / 10,
-                                          self.tolerance, **self.involute_params)
-            points_epitrochoid = equidistant(epitrochoid, 0, -0.5, self.step / 10,
-                                             self.tolerance, **self.epitrochoid_params)
-            self._calc_invol_epitr()
-            print(f'self.invol_epitr_angle / np.pi {self.invol_epitr_angle / np.pi}')
-            print(f'undercut, method 1: {self.invol_epitr_angle * 2 < np.pi}')
-            epitrochoid_ang, _, _, _ = epitrochoid_angrad(self.base_radius, 0, -1, **self.epitrochoid_params)
-            print(f'undercut, method 2: {epitrochoid_ang > -ang_pitch}')
-            points_contact = equidistant(circle, np.pi * 1.9, np.pi * 1.9999, self.step / 10,
-                                         self.tolerance, r=self.invol_epitr_rad, a0=0)
-            multiple_plot([(points_involute, 'involute'), (points_epitrochoid, 'epitrochoid'), (points_contact, 'contact')])
-
-        self._calc_invol_epitr()
-        if self.invol_epitr_angle * 2 < np.pi:
-            involute_t_min, epitrochoid_t_max, r_curr = self._find_involute_epitrochoid_intersection()  # ToDo: Use r_curr or delete
-        else:
-            involute_t_min, epitrochoid_t_max = self._find_involute_epitrochoid_contact()
-
-        # Gather limits of curves
-        self.involute_lims = [involute_t_min, t_outside]
-        self.epitrochoid_lims = [0, epitrochoid_t_max]
-        self.outside_circle_lims = [ang_outside - ang_pitch, self.quater_angle]
-        self.root_circle_lims = [-self.quater_angle, -epitrochoid_shift_ang]
-
-    def _calc_epitrochoid_shift_ang(self):
-        gear_ratio = self.cutter_teeth_num / self.tooth_num
-        cutter_base_radius = self.base_radius * gear_ratio
-        cutter_pitch_radius = self.pitch_radius * gear_ratio
-        cutter_outside_radius = cutter_pitch_radius + self.dedendum
-        pitch_ang = involute_angrad(cutter_pitch_radius, 0, 2, cutter_base_radius)[0]
-        outside_ang = involute_angrad(cutter_outside_radius, 0, 2, cutter_base_radius)[0]
-        epitrochoid_shift_ang = (outside_ang - pitch_ang) * gear_ratio
-        return epitrochoid_shift_ang, cutter_pitch_radius, cutter_outside_radius
-
-    def _get_involute_points_(self):  # ToDo: Delete trailing underscore
-        involute_points = [involute_angrad(rad, 0, 2, self.base_radius)
-                           for rad in (self.pitch_radius, self.outside_radius)]
-        ang_pitch = involute_points[0][0]
-        t_outside = involute_points[1][3]
-        ang_outside = involute_points[1][0]
-        return ang_pitch, t_outside, ang_outside
-
-    def _find_involute_epitrochoid_contact(self):
-        involute_t_min = involute_angrad(self.invol_epitr_rad, 0, 1, **self.involute_params)[3]
-        epitrochoid_t_max = epitrochoid_angrad(self.invol_epitr_rad, 0, -1, **self.epitrochoid_params)[3]
+    def _find_involute_epitrochoid_contact(self, invol_epitr_rad):
+        involute_t_min = involute_angrad(invol_epitr_rad, 0, 1, **self.involute_params)[3]
+        epitrochoid_t_max = self.my_epitrochoid_angrad(invol_epitr_rad, 0, -1, **self.epitrochoid_params)[3]
         return involute_t_min, epitrochoid_t_max
 
     def _find_involute_epitrochoid_intersection(self):
@@ -167,7 +128,7 @@ class HalfTooth(GearParams):
         for _ in range(100):
             r_curr = np.mean([r_min, r_max])
             involute_ang, _, _, involute_t_min = involute_angrad(r_curr, 0, 1, **self.involute_params)
-            epitrochoid_ang, _, _, epitrochoid_t_max = epitrochoid_angrad(r_curr, 0, -1, **self.epitrochoid_params)
+            epitrochoid_ang, _, _, epitrochoid_t_max = self.my_epitrochoid_angrad(r_curr, 0, -1, **self.epitrochoid_params)
             if involute_ang == epitrochoid_ang or not (r_min < r_curr < r_max):
                 break
             if involute_ang < epitrochoid_ang:
@@ -179,9 +140,9 @@ class HalfTooth(GearParams):
 
         return involute_t_min, epitrochoid_t_max, r_curr
 
-    def _build_half_tooth_(self):  # ToDo: Delete trailing underscore
+    def _build_half_tooth(self):
         points_involute = equidistant(involute, self.involute_lims[0], self.involute_lims[1], self.step, self.tolerance, **self.involute_params)
-        points_epitrochoid = equidistant(epitrochoid, self.epitrochoid_lims[0], self.epitrochoid_lims[1], self.step, self.tolerance, **self.epitrochoid_params)
+        points_epitrochoid = equidistant(self.my_epitrochoid, self.epitrochoid_lims[0], self.epitrochoid_lims[1], self.step, self.tolerance, **self.epitrochoid_params)
         points_outside = equidistant(circle, self.outside_circle_lims[0], self.outside_circle_lims[1], self.step, self.tolerance, **self.outside_circle_params)
         points_root = equidistant(circle, self.root_circle_lims[0], self.root_circle_lims[1], self.step, self.tolerance, **self.root_circle_params)
 

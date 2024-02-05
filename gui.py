@@ -317,13 +317,13 @@ class GearsApp(Tk):
                                 pressure_angle=self.inputs.pressure_angle_val,
                                 ad_coef=self.inputs.ad_coef0_val,
                                 de_coef=self.inputs.de_coef0_val,
-                                cutter_teeth_num=self.inputs.tooth_num1_val)
+                                cutter_teeth_num=0)#self.inputs.tooth_num1_val)
         self.tooth1 = HalfTooth(tooth_num=self.inputs.tooth_num1_val,
                                 module=self.inputs.module_val,
                                 pressure_angle=self.inputs.pressure_angle_val,
                                 ad_coef=self.inputs.ad_coef1_val,
                                 de_coef=self.inputs.de_coef1_val,
-                                cutter_teeth_num=self.inputs.tooth_num0_val)
+                                cutter_teeth_num=0)#self.inputs.tooth_num0_val)
 
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
