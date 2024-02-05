@@ -116,7 +116,8 @@ def make_angrad_func(func):
 #     return out_x, out_y
 
 
-def equidistant(func, t_st, t_en, step, tolerance, *args, **kwargs):
+def equidistant(func, t_lims, step, tolerance, *args, **kwargs):
+    t_st, t_en = t_lims
     seg_num = 8
     t_step = (t_en - t_st) / seg_num
     t_range = np.append(np.arange(t_st, t_en, t_step)[:seg_num], t_en)

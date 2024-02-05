@@ -198,7 +198,7 @@ if function == 'HalfTooth':
 if function == 'equidistant':
     # equidistant(involute, 0, 2, 0.1, 0.1, r=2)
     # simple_plot(*equidistant(involute, 0, 2, 0.1, 0.0001, r=2), 'Involute', marker='x', markersize=3)
-    simple_plot(*equidistant(epitrochoid_flat, 0, 2, 0.1, 0.1, R=4, l=1), 'Involute', marker='x', markersize=3)
+    simple_plot(*equidistant(epitrochoid_flat, (0, 2), 0.1, 0.1, R=4, l=1), 'Involute', marker='x', markersize=3)
 
 #if function == '':
 

@@ -63,10 +63,10 @@ class HalfTooth(GearParams):
             involute_t_min, epitrochoid_t_max = self._find_involute_epitrochoid_contact(invol_epitr_rad)
 
         # Gather limits of curves
-        self.involute_lims = [involute_t_min, t_outside]
-        self.epitrochoid_lims = [0, epitrochoid_t_max]
-        self.outside_circle_lims = [ang_outside - ang_pitch, self.quater_angle]
-        self.root_circle_lims = [-self.quater_angle, -epitrochoid_shift_ang]
+        self.involute_lims = (involute_t_min, t_outside)
+        self.epitrochoid_lims = (0, epitrochoid_t_max)
+        self.outside_circle_lims = (ang_outside - ang_pitch, self.quater_angle)
+        self.root_circle_lims = (-self.quater_angle, -epitrochoid_shift_ang)
 
     def _calc_epitrochoid_flat_shift_ang(self):
         circular_pitch = self.module * np.pi
@@ -94,7 +94,7 @@ class HalfTooth(GearParams):
 
     def _calc_invol_epitr_flat(self):
         invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
-        invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / invol_epitr_rad) + self.pressure_angle  # ToDo: Use it as tooth undercut detector (if < pi / 2).
+        invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / invol_epitr_rad) + self.pressure_angle
         return invol_epitr_rad, invol_epitr_angle
 
     def _calc_invol_epitr(self):
@@ -141,10 +141,10 @@ class HalfTooth(GearParams):
         return involute_t_min, epitrochoid_t_max, r_curr
 
     def _build_half_tooth(self):
-        points_involute = equidistant(involute, self.involute_lims[0], self.involute_lims[1], self.step, self.tolerance, **self.involute_params)
-        points_epitrochoid = equidistant(self.my_epitrochoid, self.epitrochoid_lims[0], self.epitrochoid_lims[1], self.step, self.tolerance, **self.epitrochoid_params)
-        points_outside = equidistant(circle, self.outside_circle_lims[0], self.outside_circle_lims[1], self.step, self.tolerance, **self.outside_circle_params)
-        points_root = equidistant(circle, self.root_circle_lims[0], self.root_circle_lims[1], self.step, self.tolerance, **self.root_circle_params)
+        points_involute = equidistant(involute, self.involute_lims, self.step, self.tolerance, **self.involute_params)
+        points_epitrochoid = equidistant(self.my_epitrochoid, self.epitrochoid_lims, self.step, self.tolerance, **self.epitrochoid_params)
+        points_outside = equidistant(circle, self.outside_circle_lims, self.step, self.tolerance, **self.outside_circle_params)
+        points_root = equidistant(circle, self.root_circle_lims, self.step, self.tolerance, **self.root_circle_params)
 
         self.half_tooth_profile = stack_curves(points_root, points_epitrochoid, points_involute, points_outside)
 
