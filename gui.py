@@ -158,6 +158,16 @@ class InputFrame(Frame):
         self.gear1_cb.grid(row=2, column=1, padx=2, pady=2, sticky=E)
         self.has_gear1.trace('w', self.checkbtn_callback)
 
+        Label(common_params_frame, text='Cutting tool:').grid(row=3, column=0, columnspan=2, padx=10, pady=2, sticky=W)
+        self.cutter = IntVar()
+        Radiobutton(common_params_frame, text='rack', variable=self.cutter, value=0, selectcolor='lemon chiffon').grid(row=4, column=0, pady=2, sticky=W)
+        Radiobutton(common_params_frame, text='gear, num of teeth:', variable=self.cutter, value=1, selectcolor='lemon chiffon').grid(row=5, column=0, pady=2, sticky=W)
+        self.cutter_tooth_num = EntryValid(common_params_frame, check_pos_int, width=6, justify='right')
+        self.cutter_tooth_num.grid(row=5, column=1, padx=2, pady=2, sticky=E)
+        self.cutter_tooth_num.insert(END, '18')
+        Radiobutton(common_params_frame, text='mating gear', variable=self.cutter, value=2, selectcolor='lemon chiffon').grid(row=6, column=0, pady=2, sticky=W)
+        self.cutter.trace('w', self.cutter_callback)
+
             # Gear 1
         params0_frame = LabelFrame(self, labelwidget=Label(self, text='Gear 1', font=('Times', 10, 'italic')),
                                    labelanchor=N)
@@ -203,6 +213,7 @@ class InputFrame(Frame):
         self.input_fields = get_entry_valid_recur(self)
         self.gear1_inputs = get_entry_valid_recur(params1_frame)
         self.checkbtn_callback()
+        self.cutter_callback()
 
     def input_callback(self):
         if self.input_fields:
@@ -215,6 +226,9 @@ class InputFrame(Frame):
         state = NORMAL if self.has_gear1.get() else DISABLED
         for input_field in self.gear1_inputs:
             input_field.config(state=state)
+
+    def cutter_callback(self, *args):
+        self.cutter_tooth_num.config(state=(NORMAL if self.cutter.get() == 1 else DISABLED))
 
     # Value getters
     @property
@@ -248,6 +262,23 @@ class InputFrame(Frame):
     @property
     def de_coef1_val(self):
         return float(self.de_coef1.strvar.get())
+
+    @property
+    def cutter_teeth_num0(self):
+        return self.cutter_teeth_num(0)
+
+    @property
+    def cutter_teeth_num1(self):
+        return self.cutter_teeth_num(1)
+
+    def cutter_teeth_num(self, gear_idx):
+        cutter_val = self.cutter.get()
+        if cutter_val == 0:
+            return 0
+        elif cutter_val == 1:
+            return int(self.cutter_tooth_num.get())
+        else:
+            return (self.tooth_num1_val, self.tooth_num0_val)[gear_idx]
 
 
 class GearsApp(Tk):
@@ -317,13 +348,13 @@ class GearsApp(Tk):
                                 pressure_angle=self.inputs.pressure_angle_val,
                                 ad_coef=self.inputs.ad_coef0_val,
                                 de_coef=self.inputs.de_coef0_val,
-                                cutter_teeth_num=0)#self.inputs.tooth_num1_val)
+                                cutter_teeth_num=self.inputs.cutter_teeth_num0)
         self.tooth1 = HalfTooth(tooth_num=self.inputs.tooth_num1_val,
                                 module=self.inputs.module_val,
                                 pressure_angle=self.inputs.pressure_angle_val,
                                 ad_coef=self.inputs.ad_coef1_val,
                                 de_coef=self.inputs.de_coef1_val,
-                                cutter_teeth_num=0)#self.inputs.tooth_num0_val)
+                                cutter_teeth_num=self.inputs.cutter_teeth_num1)
 
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
