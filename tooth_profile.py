@@ -30,7 +30,8 @@ class HalfTooth(GearParams):
             epitrochoid_shift_ang = self._calc_epitrochoid_flat_shift_ang()
         else:
             epitrochoid_shift_ang, cutter_pitch_radius, cutter_outside_radius = self._calc_epitrochoid_shift_ang()
-        ang_pitch, t_outside, ang_outside = self._get_involute_points()
+        ang_pitch = involute_angrad(self.pitch_radius, 0, 2, self.base_radius)[0]
+        ang_outside, _, _, t_outside = involute_angrad(self.outside_radius, 0, 2, self.base_radius)
 
         # Gather params of curves
         self.involute_params = {
@@ -83,14 +84,6 @@ class HalfTooth(GearParams):
         outside_ang = involute_angrad(cutter_outside_radius, 0, 2, cutter_base_radius)[0]
         epitrochoid_shift_ang = (outside_ang - pitch_ang) * gear_ratio
         return epitrochoid_shift_ang, cutter_pitch_radius, cutter_outside_radius
-
-    def _get_involute_points(self):
-        involute_points = [involute_angrad(rad, 0, 2, self.base_radius)
-                           for rad in (self.pitch_radius, self.outside_radius)]
-        ang_pitch = involute_points[0][0]
-        t_outside = involute_points[1][3]
-        ang_outside = involute_points[1][0]
-        return ang_pitch, t_outside, ang_outside
 
     def _calc_invol_epitr_flat(self):
         invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
