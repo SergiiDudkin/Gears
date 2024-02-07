@@ -10,9 +10,11 @@ TOLERANCE = 0.1
 
 class HalfTooth(GearParams):
     def __init__(self, tooth_num, module, cutter_teeth_num=float('inf'), pressure_angle=STANDARD_PRESSURE_ANGLE,
-                 ad_coef=STANDARD_ADDENDUM_COEF, de_coef=STANDARD_DEDENDUM_COEF, step=STEP, tolerance=TOLERANCE):
+                 ad_coef=STANDARD_ADDENDUM_COEF, de_coef=STANDARD_DEDENDUM_COEF, step=STEP, tolerance=TOLERANCE,
+                 profile_shift_coef=0):
         super().__init__(tooth_num, module, pressure_angle, ad_coef, de_coef)
         self.cutter_teeth_num = cutter_teeth_num
+        self.profile_shift_coef = profile_shift_coef
         self.step = step
         self.tolerance = tolerance
 
@@ -32,6 +34,12 @@ class HalfTooth(GearParams):
             epitrochoid_shift_ang, cutter_pitch_radius, cutter_outside_radius = self._calc_epitrochoid_shift_ang()
         ang_pitch = involute_angrad(self.pitch_radius, 0, 2, self.base_radius)[0]
         ang_outside, _, _, t_outside = involute_angrad(self.outside_radius, 0, 2, self.base_radius)
+
+        # Consider the profile shift
+        profile_ang_shift = self._calc_shift_ang(self.profile_shift_coef * self.module)
+        epitrochoid_shift_ang -= profile_ang_shift
+        ang_pitch -= profile_ang_shift
+        ang_outside -= profile_ang_shift
 
         # Gather params of curves
         self.involute_params = {
@@ -58,7 +66,8 @@ class HalfTooth(GearParams):
         }
 
         invol_epitr_rad, invol_epitr_angle = self._calc_invol_epitr_flat() if self.is_rack else self._calc_invol_epitr()
-        if invol_epitr_angle * 2 < np.pi:
+        self.is_tooth_undercut = invol_epitr_angle * 2 < np.pi
+        if self.is_tooth_undercut:
             involute_t_min, epitrochoid_t_max, r_curr = self._find_involute_epitrochoid_intersection()  # ToDo: Use r_curr or delete
         else:
             involute_t_min, epitrochoid_t_max = self._find_involute_epitrochoid_contact(invol_epitr_rad)
@@ -69,11 +78,13 @@ class HalfTooth(GearParams):
         self.outside_circle_lims = (ang_outside - ang_pitch, self.quater_angle)
         self.root_circle_lims = (-self.quater_angle, -epitrochoid_shift_ang)
 
-    def _calc_epitrochoid_flat_shift_ang(self):
+    def _calc_shift_ang(self, radial_shift):
         circular_pitch = self.module * np.pi
-        proj_onto_rack = self.dedendum * np.tan(self.pressure_angle)
-        epitrochoid_shift_ang = self.tooth_angle * proj_onto_rack / circular_pitch
-        return epitrochoid_shift_ang
+        proj_onto_rack = radial_shift * np.tan(self.pressure_angle)
+        return self.tooth_angle * proj_onto_rack / circular_pitch  # Shift angle
+
+    def _calc_epitrochoid_flat_shift_ang(self):
+        return self._calc_shift_ang(self.dedendum)
 
     def _calc_epitrochoid_shift_ang(self):
         gear_ratio = self.cutter_teeth_num / self.tooth_num
@@ -91,7 +102,7 @@ class HalfTooth(GearParams):
         return invol_epitr_rad, invol_epitr_angle
 
     def _calc_invol_epitr(self):
-        # Solve the first triangle using law of sines
+        # Solve the first triangle using the law of sines
         b = self.cutter_teeth_num * self.module / 2  # Cutting gear pitch radius
         a = b + self.dedendum
         alpha = np.pi / 2 + self.pressure_angle
@@ -100,7 +111,7 @@ class HalfTooth(GearParams):
         gamma = np.pi - alpha - beta
         c = R2t * np.sin(gamma)
 
-        # Solve the second triangle using law of cosines
+        # Solve the second triangle using the law of cosines
         c_ = c
         b_ = self.pitch_radius
         alpha_ = np.pi / 2 - self.pressure_angle
@@ -111,7 +122,7 @@ class HalfTooth(GearParams):
 
     def _find_involute_epitrochoid_contact(self, invol_epitr_rad):
         involute_t_min = involute_angrad(invol_epitr_rad, 0, 1, **self.involute_params)[3]
-        epitrochoid_t_max = self.my_epitrochoid_angrad(invol_epitr_rad, 0, -1, **self.epitrochoid_params)[3]
+        epitrochoid_t_max = self.my_epitrochoid_angrad(invol_epitr_rad, 0, -0.1, **self.epitrochoid_params)[3]
         return involute_t_min, epitrochoid_t_max
 
     def _find_involute_epitrochoid_intersection(self):
@@ -121,7 +132,7 @@ class HalfTooth(GearParams):
         for _ in range(100):
             r_curr = np.mean([r_min, r_max])
             involute_ang, _, _, involute_t_min = involute_angrad(r_curr, 0, 1, **self.involute_params)
-            epitrochoid_ang, _, _, epitrochoid_t_max = self.my_epitrochoid_angrad(r_curr, 0, -1, **self.epitrochoid_params)
+            epitrochoid_ang, _, _, epitrochoid_t_max = self.my_epitrochoid_angrad(r_curr, 0, -0.1, **self.epitrochoid_params)
             if involute_ang == epitrochoid_ang or not (r_min < r_curr < r_max):
                 break
             if involute_ang < epitrochoid_ang:

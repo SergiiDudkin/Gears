@@ -24,6 +24,7 @@ class GearParams:
         self._calc_root_diameter()
         self._calc_base_diameter()
         self._calc_tooth_angle()
+        self._calc_circular_pitch()
 
     def _calc_pitch_diameter(self):
         self.pitch_diameter = self.tooth_num * self.module
@@ -49,6 +50,9 @@ class GearParams:
 
     def _calc_tooth_angle(self):
         self.tooth_angle = 2 * np.pi / self.tooth_num
+
+    def _calc_circular_pitch(self):
+        self.circular_pitch = self.module * np.pi
 
     def __str__(self):
         return '\n'.join([f'{attr}: {getattr(self, attr)}' for attr in self.attrs_to_print])

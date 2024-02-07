@@ -125,6 +125,14 @@ def check_90_deg(strvar):
     return True if (0 < num < 90) else False
 
 
+def check_float(strvar):
+    try:
+        float(strvar)
+        return True
+    except ValueError:
+        return False
+
+
 def get_entry_valid_recur(widget):
     return [widget] if isinstance(widget, EntryValid) \
         else [item for child in widget.winfo_children() for item in get_entry_valid_recur(child)]
@@ -167,6 +175,18 @@ class InputFrame(Frame):
         self.cutter_tooth_num.insert(END, '18')
         Radiobutton(common_params_frame, text='mating gear', variable=self.cutter, value=2, selectcolor='lemon chiffon').grid(row=6, column=0, pady=2, sticky=W)
         self.cutter.trace('w', self.cutter_callback)
+
+        Label(common_params_frame, text='Profile shift coef.').grid(row=7, column=0, padx=2, pady=2, sticky=W)
+        self.profile_shift_coef = EntryValid(common_params_frame, check_float, width=6, justify='right')
+        self.profile_shift_coef.grid(row=7, column=1, padx=2, pady=2, sticky=E)
+        self.profile_shift_coef.insert(END, '0')
+
+        Label(common_params_frame, text='Move rack:').grid(row=8, column=0, columnspan=2, padx=10, pady=2, sticky=W)
+        btn_frame = Frame(common_params_frame)
+        btn_frame.grid(row=9, column=0, columnspan=2, padx=10, pady=0, sticky=W)
+        step = 0.05
+        Button(btn_frame, text=f'+{step}', width=2, command=lambda: self.shift_callback(step)).pack(padx=2, pady=2, side=LEFT)
+        Button(btn_frame, text=f'-{step}', width=2, command=lambda: self.shift_callback(-step)).pack(padx=2, pady=2, side=LEFT)
 
             # Gear 1
         params0_frame = LabelFrame(self, labelwidget=Label(self, text='Gear 1', font=('Times', 10, 'italic')),
@@ -215,6 +235,7 @@ class InputFrame(Frame):
         self.checkbtn_callback()
         self.cutter_callback()
 
+    # Input callbacks
     def input_callback(self):
         if self.input_fields:
             if all([field.is_valid for field in self.input_fields]):
@@ -229,6 +250,16 @@ class InputFrame(Frame):
 
     def cutter_callback(self, *args):
         self.cutter_tooth_num.config(state=(NORMAL if self.cutter.get() == 1 else DISABLED))
+
+    def shift_callback(self, term, *args):
+        affected_vars = ((self.profile_shift_coef, 1), (self.ad_coef0, 1), (self.de_coef0, -1), (self.ad_coef1, -1), (self.de_coef1, 1))
+        for affected_var, sign in affected_vars:
+            try:
+                old_val = float(affected_var.strvar.get())
+            except ValueError:
+                continue
+            affected_var.delete(0, END)
+            affected_var.insert(END, str(round(old_val + term * sign, 5)))
 
     # Value getters
     @property
@@ -265,13 +296,17 @@ class InputFrame(Frame):
 
     @property
     def cutter_teeth_num0(self):
-        return self.cutter_teeth_num(0)
+        return self.cutter_teeth_num_val(0)
 
     @property
     def cutter_teeth_num1(self):
-        return self.cutter_teeth_num(1)
+        return self.cutter_teeth_num_val(1)
 
-    def cutter_teeth_num(self, gear_idx):
+    @property
+    def profile_shift_coef_val(self):
+        return float(self.profile_shift_coef.strvar.get())
+
+    def cutter_teeth_num_val(self, gear_idx):
         cutter_val = self.cutter.get()
         if cutter_val == 0:
             return 0
