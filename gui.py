@@ -1,4 +1,6 @@
 from tkinter import *
+from tkinter import filedialog
+import tkinter.ttk as ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.backend_bases import key_press_handler
@@ -84,7 +86,24 @@ class ToolbarPlayer(NavigationToolbar2Tk):
             self.play_btn.config(state=DISABLED)
 
 
-class EntryValid(Entry, object):
+class EntryValid(Entry):
+    """General entry widget with validation. Validator func must be added as the 2nd argument."""
+    def __init__(self, parent, validator, **kwargs):
+        self.input_callback = parent.master.input_callback
+        self.validator = validator
+        self.strvar = StringVar(parent)
+        self.strvar.trace('w', self.entry_callback)
+        kwargs['textvariable'] = self.strvar
+        super().__init__(parent, **kwargs)
+        self.entry_callback()
+
+    def entry_callback(self, *args):
+        self.is_valid = self.validator(self.strvar.get())
+        self['bg'] = 'lemon chiffon' if self.is_valid else '#fca7b8'
+        self.input_callback()
+
+
+class SpinboxValid(Spinbox):
     """General entry widget with validation. Validator func must be added as the 2nd argument."""
     def __init__(self, parent, validator, **kwargs):
         self.input_callback = parent.master.input_callback
@@ -133,8 +152,16 @@ def check_float(strvar):
         return False
 
 
+def check_abs_one(strvar):
+    try:
+        num = float(strvar)
+    except ValueError:
+        return False
+    return True if np.abs(num) <= 1 else False
+
+
 def get_entry_valid_recur(widget):
-    return [widget] if isinstance(widget, EntryValid) \
+    return [widget] if isinstance(widget, EntryValid | SpinboxValid) \
         else [item for child in widget.winfo_children() for item in get_entry_valid_recur(child)]
 
 
@@ -160,36 +187,48 @@ class InputFrame(Frame):
         self.pressure_angle.grid(row=1, column=1, padx=2, pady=2, sticky=E)
         self.pressure_angle.insert(END, '20')
 
-        Label(common_params_frame, text='Second gear').grid(row=2, column=0, padx=2, pady=2, sticky=W)
-        self.has_gear1 = IntVar()
-        self.gear1_cb = Checkbutton(common_params_frame, variable=self.has_gear1, selectcolor='lemon chiffon')
-        self.gear1_cb.grid(row=2, column=1, padx=2, pady=2, sticky=E)
-        self.has_gear1.trace('w', self.checkbtn_callback)
+        # Label(common_params_frame, text='Second gear').grid(row=2, column=0, padx=2, pady=2, sticky=W)
+        # self.has_gear1 = IntVar()
+        # self.gear1_cb = Checkbutton(common_params_frame, variable=self.has_gear1, selectcolor='lemon chiffon')
+        # self.gear1_cb.grid(row=2, column=1, padx=2, pady=2, sticky=E)
+        # self.has_gear1.trace('w', self.checkbtn_callback)
 
         Label(common_params_frame, text='Cutting tool:').grid(row=3, column=0, columnspan=2, padx=10, pady=2, sticky=W)
         self.cutter = IntVar()
-        Radiobutton(common_params_frame, text='rack', variable=self.cutter, value=0, selectcolor='lemon chiffon').grid(row=4, column=0, pady=2, sticky=W)
-        Radiobutton(common_params_frame, text='gear, num of teeth:', variable=self.cutter, value=1, selectcolor='lemon chiffon').grid(row=5, column=0, pady=2, sticky=W)
-        self.cutter_tooth_num = EntryValid(common_params_frame, check_pos_int, width=6, justify='right')
-        self.cutter_tooth_num.grid(row=5, column=1, padx=2, pady=2, sticky=E)
+        Radiobutton(common_params_frame, text='rack or hob cutter', variable=self.cutter, value=0, selectcolor='lemon chiffon').grid(row=4, column=0, pady=2, sticky=W)
+
+        rb_frame = Frame(common_params_frame)
+        rb_frame.grid(row=5, column=0, columnspan=2, pady=2, sticky=W)
+        common_params_frame.input_callback = self.input_callback
+        Radiobutton(rb_frame, text='gear, ', variable=self.cutter, value=1, selectcolor='lemon chiffon').pack(side=LEFT)
+        self.cutter_tooth_num = EntryValid(rb_frame, check_pos_int, width=6, justify='right')
+        self.cutter_tooth_num.pack(side=LEFT)
         self.cutter_tooth_num.insert(END, '18')
+        Label(rb_frame, text=' teeth').pack(side=LEFT)
+
         Radiobutton(common_params_frame, text='mating gear', variable=self.cutter, value=2, selectcolor='lemon chiffon').grid(row=6, column=0, pady=2, sticky=W)
         self.cutter.trace('w', self.cutter_callback)
 
-        Label(common_params_frame, text='Profile shift coef.').grid(row=7, column=0, padx=2, pady=2, sticky=W)
-        self.profile_shift_coef = EntryValid(common_params_frame, check_float, width=6, justify='right')
+        Label(common_params_frame, text='Profile shift coef').grid(row=7, column=0, padx=2, pady=2, sticky=W)
+        # self.profile_shift_coef = EntryValid(common_params_frame, check_float, width=6, justify='right')
+        tcl_up_or_down = self.register(self.shift_callback)
+        self.step = 0.05
+        self.profile_shift_coef = SpinboxValid(common_params_frame, check_abs_one, width=6, from_=-1e10, to=1e10, increment=self.step, command=(tcl_up_or_down, '%d'), justify='right')
         self.profile_shift_coef.grid(row=7, column=1, padx=2, pady=2, sticky=E)
-        self.profile_shift_coef.insert(END, '0')
+        # self.profile_shift_coef.insert(END, '0')
+        self.profile_shift_coef.strvar.set('0')
 
-        Label(common_params_frame, text='Move rack:').grid(row=8, column=0, columnspan=2, padx=10, pady=2, sticky=W)
-        btn_frame = Frame(common_params_frame)
-        btn_frame.grid(row=9, column=0, columnspan=2, padx=10, pady=0, sticky=W)
-        step = 0.05
-        Button(btn_frame, text=f'+{step}', width=2, command=lambda: self.shift_callback(step)).pack(padx=2, pady=2, side=LEFT)
-        Button(btn_frame, text=f'-{step}', width=2, command=lambda: self.shift_callback(-step)).pack(padx=2, pady=2, side=LEFT)
+        # Label(common_params_frame, text='Move rack:').grid(row=8, column=0, columnspan=2, padx=10, pady=2, sticky=W)
+        # btn_frame = Frame(common_params_frame)
+        # btn_frame.grid(row=9, column=0, columnspan=2, padx=10, pady=0, sticky=W)
+        # step = 0.05
+        # Button(btn_frame, text=f'+{step}', width=2, command=lambda: self.shift_callback(step)).pack(padx=2, pady=2, side=LEFT)
+        # Button(btn_frame, text=f'-{step}', width=2, command=lambda: self.shift_callback(-step)).pack(padx=2, pady=2, side=LEFT)
+
+
 
             # Gear 1
-        params0_frame = LabelFrame(self, labelwidget=Label(self, text='Gear 1', font=('Times', 10, 'italic')),
+        params0_frame = LabelFrame(self, labelwidget=Label(self, text='Gear A', font=('Times', 10, 'italic')),
                                    labelanchor=N)
         params0_frame.pack(side=TOP, padx=2, pady=2, fill=X)
         params0_frame.columnconfigure(0, weight=1)
@@ -210,7 +249,7 @@ class InputFrame(Frame):
         self.de_coef0.insert(END, '1')
 
             # Gear 2
-        params1_frame = LabelFrame(self, labelwidget=Label(self, text='Gear 2', font=('Times', 10, 'italic')),
+        params1_frame = LabelFrame(self, labelwidget=Label(self, text='Gear B', font=('Times', 10, 'italic')),
                                    labelanchor=N)
         params1_frame.pack(side=TOP, padx=2, pady=2, fill=X)
         params1_frame.columnconfigure(0, weight=1)
@@ -231,8 +270,8 @@ class InputFrame(Frame):
         self.de_coef1.insert(END, '1')
 
         self.input_fields = get_entry_valid_recur(self)
-        self.gear1_inputs = get_entry_valid_recur(params1_frame)
-        self.checkbtn_callback()
+        # self.gear1_inputs = get_entry_valid_recur(params1_frame)
+        # self.checkbtn_callback()
         self.cutter_callback()
 
     # Input callbacks
@@ -243,23 +282,35 @@ class InputFrame(Frame):
             else:
                 self.master.master.toolbar.deactivate()
 
-    def checkbtn_callback(self, *args):
-        state = NORMAL if self.has_gear1.get() else DISABLED
-        for input_field in self.gear1_inputs:
-            input_field.config(state=state)
+    # def checkbtn_callback(self, *args):
+    #     state = NORMAL if self.has_gear1.get() else DISABLED
+    #     for input_field in self.gear1_inputs:
+    #         input_field.config(state=state)
 
     def cutter_callback(self, *args):
         self.cutter_tooth_num.config(state=(NORMAL if self.cutter.get() == 1 else DISABLED))
 
-    def shift_callback(self, term, *args):
-        affected_vars = ((self.profile_shift_coef, 1), (self.ad_coef0, 1), (self.de_coef0, -1), (self.ad_coef1, -1), (self.de_coef1, 1))
+    # def shift_callback(self, term, *args):
+    #     affected_vars = ((self.profile_shift_coef, 1), (self.ad_coef0, 1), (self.de_coef0, -1), (self.ad_coef1, -1), (self.de_coef1, 1))
+    #     for affected_var, sign in affected_vars:
+    #         try:
+    #             old_val = float(affected_var.strvar.get())
+    #         except ValueError:
+    #             continue
+    #         affected_var.delete(0, END)
+    #         affected_var.insert(END, str(round(old_val + term * sign, 5)))
+
+    def shift_callback(self, direction):
+        self.profile_shift_coef.entry_callback()
+        dir_ = 1 if direction == 'up' else -1
+        affected_vars = ((self.ad_coef0, 1), (self.de_coef0, -1), (self.ad_coef1, -1), (self.de_coef1, 1))
         for affected_var, sign in affected_vars:
             try:
                 old_val = float(affected_var.strvar.get())
             except ValueError:
                 continue
             affected_var.delete(0, END)
-            affected_var.insert(END, str(round(old_val + term * sign, 5)))
+            affected_var.insert(END, str(round(old_val + self.step * sign * dir_, 5)))
 
     # Value getters
     @property
@@ -333,12 +384,41 @@ class GearsApp(Tk):
         # Sidebar
         self.inputs = InputFrame(main_frame)
 
+        notebook = ttk.Notebook(main_frame, width=10000, height=10000)
+        notebook.pack(padx=2, pady=2, side=RIGHT)
+        # ttk.Style().configure("TNotebook", background='red')
+
+
             # Plots frame
-        plots_frame = Frame(main_frame)
-        plots_frame.pack(side=LEFT, fill=BOTH, expand=True)
-        self.globplot_frame = LabelFrame(plots_frame, labelwidget=Label(plots_frame, text='Simulation',
-                                         font=('Times', 10, 'italic')), labelanchor=N)
-        self.globplot_frame.pack(padx=2, pady=2, ipady=0, fill=BOTH, expand=True)
+        self.plots_frame = Frame(notebook)
+        self.plots_frame.pack(side=LEFT, fill=BOTH, expand=True)
+        notebook.add(self.plots_frame, text='Simulation')
+        # self.globplot_frame = LabelFrame(plots_frame, labelwidget=Label(plots_frame, text='Simulation',
+        #                                  font=('Times', 10, 'italic')), labelanchor=N)
+        # self.globplot_frame.pack(padx=2, pady=2, ipady=0, fill=BOTH, expand=True)
+
+
+            # Text frame
+        self.text_frame = Frame(notebook)
+        self.text_frame.pack(side=LEFT, fill=BOTH, expand=True)
+        notebook.add(self.text_frame, text='Data')
+
+        msg_subframe = Frame(self.text_frame)
+        msg_subframe.pack(padx=4, pady=3, fill=BOTH, expand=True)
+
+        txt_btn_frame = Frame(msg_subframe)
+        txt_btn_frame.pack(side=BOTTOM, fill=X, pady=1)
+        Button(txt_btn_frame, text='Save', width=6, command=self.save_text).pack(side=RIGHT)
+
+        self.txt = Text(msg_subframe, height=10, width=20, state='disabled')
+        yscrollbar = ttk.Scrollbar(msg_subframe, command=self.txt.yview)
+        yscrollbar.pack(side=RIGHT, pady=2, fill=Y)
+        self.txt.pack(side=RIGHT, pady=1, fill=BOTH, expand=True)
+        self.txt.config(yscrollcommand=yscrollbar.set)
+        self.text_msg('App started\n'*100)
+
+
+        # print(dir(notebook))
 
                 # Matplotlib canvas
         self.fig = Figure(figsize=(10, 8))
@@ -346,12 +426,12 @@ class GearsApp(Tk):
         self.fig.set_facecolor(self.cget("background"))
         self.ax = self.fig.add_subplot()
         self.ax.set_aspect('equal', 'box')
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.globplot_frame)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.plots_frame)
         self.ax.plot([], [], color='b', linewidth=1)
         self.ax.plot([], [], color='r', linewidth=1)
         self.ax.set_xlim((0, 1))
         self.ax.set_ylim((0, 1))
-        self.toolbar = ToolbarPlayer(self.canvas, self.globplot_frame, self.play, self.next_frame, self.pause,
+        self.toolbar = ToolbarPlayer(self.canvas, self.plots_frame, self.play, self.next_frame, self.pause,
                                      self.resume, self.stop)
         self.canvas.get_tk_widget().pack(side=TOP, padx=0, pady=1, fill=BOTH, expand=1)
         self.canvas.mpl_connect("key_press_event", self.on_key_press)
@@ -458,6 +538,18 @@ class GearsApp(Tk):
         [patch.remove() for patch in self.ax.patches]
         [self.plot_data(line, [], []) for line in self.ax.lines]
         self.toolbar.reset_state()
+
+    def text_msg(self, msg):
+        self.txt.configure(state='normal')
+        self.txt.insert(END, msg)
+        self.txt.configure(state='disabled')
+        self.txt.yview_moveto(1.0)
+
+    def save_text(self):
+        filepath = filedialog.asksaveasfilename(filetypes=[('txt file', '.txt')], defaultextension='.txt', initialfile='params.txt')
+        with open(filepath, 'w') as output_file:
+            output_file.write('Hello!')
+
 
 
 if __name__ == '__main__':
