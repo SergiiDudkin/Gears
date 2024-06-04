@@ -189,12 +189,6 @@ class InputFrame(Frame):
         self.pressure_angle.grid(row=1, column=1, padx=2, pady=2, sticky=E)
         self.pressure_angle.insert(END, '20')
 
-        # Label(common_params_frame, text='Second gear').grid(row=2, column=0, padx=2, pady=2, sticky=W)
-        # self.has_gear1 = IntVar()
-        # self.gear1_cb = Checkbutton(common_params_frame, variable=self.has_gear1, selectcolor='lemon chiffon')
-        # self.gear1_cb.grid(row=2, column=1, padx=2, pady=2, sticky=E)
-        # self.has_gear1.trace('w', self.checkbtn_callback)
-
         Label(common_params_frame, text='Cutting tool:').grid(row=3, column=0, columnspan=2, padx=10, pady=2, sticky=W)
         self.cutter = IntVar()
         Radiobutton(common_params_frame, text='rack or hob cutter', variable=self.cutter, value=0, selectcolor='lemon chiffon').grid(row=4, column=0, pady=2, sticky=W)
@@ -212,22 +206,11 @@ class InputFrame(Frame):
         self.cutter.trace('w', self.cutter_callback)
 
         Label(common_params_frame, text='Profile shift coef').grid(row=7, column=0, padx=2, pady=2, sticky=W)
-        # self.profile_shift_coef = EntryValid(common_params_frame, check_float, width=6, justify='right')
         tcl_up_or_down = self.register(self.shift_callback)
         self.step = 0.05
         self.profile_shift_coef = SpinboxValid(common_params_frame, check_abs_one, width=6, from_=-1e10, to=1e10, increment=self.step, command=(tcl_up_or_down, '%d'), justify='right')
         self.profile_shift_coef.grid(row=7, column=1, padx=2, pady=2, sticky=E)
-        # self.profile_shift_coef.insert(END, '0')
         self.profile_shift_coef.strvar.set('0')
-
-        # Label(common_params_frame, text='Move rack:').grid(row=8, column=0, columnspan=2, padx=10, pady=2, sticky=W)
-        # btn_frame = Frame(common_params_frame)
-        # btn_frame.grid(row=9, column=0, columnspan=2, padx=10, pady=0, sticky=W)
-        # step = 0.05
-        # Button(btn_frame, text=f'+{step}', width=2, command=lambda: self.shift_callback(step)).pack(padx=2, pady=2, side=LEFT)
-        # Button(btn_frame, text=f'-{step}', width=2, command=lambda: self.shift_callback(-step)).pack(padx=2, pady=2, side=LEFT)
-
-
 
             # Gear 1
         params0_frame = LabelFrame(self, labelwidget=Label(self, text='Gear A', font=('Times', 10, 'italic')),
@@ -272,8 +255,6 @@ class InputFrame(Frame):
         self.de_coef1.insert(END, '1')
 
         self.input_fields = get_entry_valid_recur(self)
-        # self.gear1_inputs = get_entry_valid_recur(params1_frame)
-        # self.checkbtn_callback()
         self.cutter_callback()
 
     # Input callbacks
@@ -284,23 +265,8 @@ class InputFrame(Frame):
             else:
                 self.master.master.toolbar.deactivate()
 
-    # def checkbtn_callback(self, *args):
-    #     state = NORMAL if self.has_gear1.get() else DISABLED
-    #     for input_field in self.gear1_inputs:
-    #         input_field.config(state=state)
-
     def cutter_callback(self, *args):
         self.cutter_tooth_num.config(state=(NORMAL if self.cutter.get() == 1 else DISABLED))
-
-    # def shift_callback(self, term, *args):
-    #     affected_vars = ((self.profile_shift_coef, 1), (self.ad_coef0, 1), (self.de_coef0, -1), (self.ad_coef1, -1), (self.de_coef1, 1))
-    #     for affected_var, sign in affected_vars:
-    #         try:
-    #             old_val = float(affected_var.strvar.get())
-    #         except ValueError:
-    #             continue
-    #         affected_var.delete(0, END)
-    #         affected_var.insert(END, str(round(old_val + term * sign, 5)))
 
     def shift_callback(self, direction):
         self.profile_shift_coef.entry_callback()
@@ -388,16 +354,11 @@ class GearsApp(Tk):
 
         notebook = ttk.Notebook(main_frame, width=10000, height=10000)
         notebook.pack(padx=2, pady=2, side=RIGHT)
-        # ttk.Style().configure("TNotebook", background='red')
-
 
             # Plots frame
         self.plots_frame = Frame(notebook)
         self.plots_frame.pack(side=LEFT, fill=BOTH, expand=True)
         notebook.add(self.plots_frame, text='Simulation')
-        # self.globplot_frame = LabelFrame(plots_frame, labelwidget=Label(plots_frame, text='Simulation',
-        #                                  font=('Times', 10, 'italic')), labelanchor=N)
-        # self.globplot_frame.pack(padx=2, pady=2, ipady=0, fill=BOTH, expand=True)
 
             # Text frame
         self.text_frame = Frame(notebook)
@@ -417,8 +378,6 @@ class GearsApp(Tk):
         yscrollbar.pack(side=RIGHT, pady=2, fill=Y)
         self.txt.pack(side=RIGHT, pady=1, fill=BOTH, expand=True)
         self.txt.config(yscrollcommand=yscrollbar.set)
-        # self.text_msg('App started\n'*100)
-        # print(dir(notebook))
 
             # Matplotlib canvas
         self.fig = Figure(figsize=(10, 8))

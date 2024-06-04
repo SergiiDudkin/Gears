@@ -11,7 +11,7 @@ def circle(t, r, a0=0):
 
 def involute(t, r, a0=0):
     """
-    Involute of circle as parametric equations: x(t), y(t). See https://en.wikipedia.org/wiki/Involute.
+    Involute of circle as a parametric equations: x(t), y(t). See https://en.wikipedia.org/wiki/Involute.
 
     Args:
         t: Polar angle of the tangent point.
@@ -29,7 +29,7 @@ def involute(t, r, a0=0):
 
 def epitrochoid(t, R, r, d, a0=0):
     """
-    Epitrochoid as parametric equations: x(t), y(t). See https://en.wikipedia.org/wiki/Epitrochoid.
+    Epitrochoid as a parametric equations: x(t), y(t). See https://en.wikipedia.org/wiki/Epitrochoid.
 
     Args:
         t: Polar angle of the rolling circle center.
@@ -49,15 +49,17 @@ def epitrochoid(t, R, r, d, a0=0):
 
 def epitrochoid_flat(t, R, l, a0=0):
     """
+    Epitrochoid as a parametric equations: x(t), y(t). Edge case when r = inf, i. e. line is rolling around the fixed
+    circle. The point is fixed against the line.
 
     Args:
-        t:
-        R:
-        l:
-        a0:
+        t: Polar angle of the tangent point.
+        R: Fixed circle radius.
+        l: Distance between the point and line.
+        a0: Rotation angle.
 
     Returns:
-
+        Coordinates of the point (x, y).
     """
     t_ = t + a0
     x = (R - l) * np.cos(t_) + t * R * np.sin(t_)

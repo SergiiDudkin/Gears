@@ -2,8 +2,7 @@ import numpy as np
 from transforms import mirror, populate_circ, equidistant, stack_curves, is_within_ang, rotate, cartesian_to_polar, polar_to_cartesian, upd_xy_lims
 from curves import circle, involute, epitrochoid, epitrochoid_flat, involute_angrad, epitrochoid_angrad, epitrochoid_flat_angrad
 from gear_params import GearParams, STANDARD_PRESSURE_ANGLE, STANDARD_ADDENDUM_COEF, STANDARD_DEDENDUM_COEF
-from plots import simple_plot, multiple_plot
-from helpers import sci_round, indentate
+from helpers import sci_round
 
 STEP = 0.1
 TOLERANCE = 0.1
@@ -59,11 +58,9 @@ class HalfTooth(GearParams):
         }
         self.outside_circle_params = {
             'r': self.outside_radius,
-            # 'a0': 0
         }
         self.root_circle_params = {
             'r': self.root_radius,
-            # 'a0': 0
         }
 
         invol_epitr_rad, invol_epitr_angle = self._calc_invol_epitr_flat() if self.is_rack else self._calc_invol_epitr()
@@ -174,22 +171,18 @@ class HalfTooth(GearParams):
             'outside circle': {
                 'x': 'r * np.cos(t)',
                 'y': 'r * np.sin(t)',
-                # 't_': 't + a0',
                 'params': self.outside_circle_params,
                 'lims': self.outside_circle_lims
             },
             'root circle': {
                 'x': 'r * np.cos(t)',
                 'y': 'r * np.sin(t)',
-                # 't_': 't + a0',
                 'params': self.root_circle_params,
                 'lims': self.root_circle_lims
             }
         }
 
     def __str__(self):
-        # output = 'Gear parameters\n'
-        # output += indentate(super().__str__())
         output = super().__str__()
         curves_data = self.get_curves_data()
         for curve_name in ('involute', 'epitrochoid', 'outside circle', 'root circle'):
@@ -198,13 +191,10 @@ class HalfTooth(GearParams):
                 f'\n\n{curve_name.capitalize()}:'
                 f'\n\tx = {curve["x"]}'
                 f'\n\ty = {curve["y"]}'
-                # f'\n\tt_ = {curve["t_"]}'
-                # f'\n\tt = {sci_round(curve["lims"][0], 6)} ... {sci_round(curve["lims"][1], 6)}'
             )
             curve_str += f'\n\tt_ = {curve["t_"]}' if curve.get('t_') else ''
             curve_str += f'\n\tt = {sci_round(curve["lims"][0], 6)} ... {sci_round(curve["lims"][1], 6)}'
             curve_str += '\n\t' + '\n\t'.join(f'{k} = {sci_round(v, 6)}' for k, v in curve['params'].items())
-            # output += indentate(curve_str)
             output += curve_str
         return output
 

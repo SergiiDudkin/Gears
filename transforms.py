@@ -20,11 +20,6 @@ def mirror(poi, seg_st, seg_en):
     return mirror_poi
 
 
-# def rotate(x, y, angle):
-#     """Rotate points around the origin."""
-#     return x * np.cos(angle) - y * np.sin(angle), x * np.sin(angle) + y * np.cos(angle)
-
-
 def angle_vec(vec0, vec1):  # Not tested! Not used here!
     y = np.linalg.det(np.vstack((vec0, vec1)))
     x = np.sum(vec0 * vec1)
@@ -92,28 +87,6 @@ def make_angrad_func(func):
         return ang, x, y, t_curr
 
     return angrad_func
-
-
-# def populate_circ(in_x, in_y, num):
-#     """
-#     Multiply points and place them around the origin.
-#
-#     Args:
-#         in_x (np.ndarray): Points, x values.
-#         in_y (np.ndarray): Points, y values.
-#         num (int): Number of copies, including the original one.
-#
-#     Returns:
-#         tuple[np.ndarray, np.ndarray]: Resulting x and y values respectively.
-#     """
-#     angle_step = 2 * np.pi / num
-#     out_x, out_y = in_x, in_y
-#     for i in range(1, num):
-#         angle_step * i
-#         new_x, new_y = rotate(in_x, in_y, angle_step * i)
-#         out_x = np.concatenate((out_x, new_x))
-#         out_y = np.concatenate((out_y, new_y))
-#     return out_x, out_y
 
 
 def equidistant(func, t_lims, step, tolerance, *args, **kwargs):
