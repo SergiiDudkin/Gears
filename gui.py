@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import filedialog
+import tkinter.font as tkfont
 import tkinter.ttk as ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -10,6 +11,7 @@ import os
 from tooth_profile import HalfTooth, GearSector
 from transforms import upd_xy_lims, merge_xy_lims
 from enum import Enum, auto
+from helpers import indentate
 
 
 class State(Enum):
@@ -397,7 +399,6 @@ class GearsApp(Tk):
         #                                  font=('Times', 10, 'italic')), labelanchor=N)
         # self.globplot_frame.pack(padx=2, pady=2, ipady=0, fill=BOTH, expand=True)
 
-
             # Text frame
         self.text_frame = Frame(notebook)
         self.text_frame.pack(side=LEFT, fill=BOTH, expand=True)
@@ -411,16 +412,15 @@ class GearsApp(Tk):
         Button(txt_btn_frame, text='Save', width=6, command=self.save_text).pack(side=RIGHT)
 
         self.txt = Text(msg_subframe, height=10, width=20, state='disabled')
+        self.txt.config(tabs=tkfont.Font(font=self.txt['font']).measure('    '))
         yscrollbar = ttk.Scrollbar(msg_subframe, command=self.txt.yview)
         yscrollbar.pack(side=RIGHT, pady=2, fill=Y)
         self.txt.pack(side=RIGHT, pady=1, fill=BOTH, expand=True)
         self.txt.config(yscrollcommand=yscrollbar.set)
-        self.text_msg('App started\n'*100)
-
-
+        # self.text_msg('App started\n'*100)
         # print(dir(notebook))
 
-                # Matplotlib canvas
+            # Matplotlib canvas
         self.fig = Figure(figsize=(10, 8))
         self.fig.set_tight_layout(True)
         self.fig.set_facecolor(self.cget("background"))
@@ -499,6 +499,12 @@ class GearsApp(Tk):
         self.ax.set_xlim((min_x - margin, max_x + margin))
         self.ax.set_ylim((min_y - margin, max_y + margin))
 
+        self.text_msg(
+            'Gear A parameters\n\n'
+            f'{indentate(str(self.tooth0))}'
+            '\n\n\nGear B parameters\n\n'
+            f'{indentate(str(self.tooth1))}'
+        )
         self.show_next_frame()
 
     def next_frame(self):
@@ -541,6 +547,7 @@ class GearsApp(Tk):
 
     def text_msg(self, msg):
         self.txt.configure(state='normal')
+        self.txt.delete(1.0, END)
         self.txt.insert(END, msg)
         self.txt.configure(state='disabled')
         self.txt.yview_moveto(1.0)
@@ -548,8 +555,7 @@ class GearsApp(Tk):
     def save_text(self):
         filepath = filedialog.asksaveasfilename(filetypes=[('txt file', '.txt')], defaultextension='.txt', initialfile='params.txt')
         with open(filepath, 'w') as output_file:
-            output_file.write('Hello!')
-
+            output_file.write(self.txt.get("1.0", "end-1c"))
 
 
 if __name__ == '__main__':

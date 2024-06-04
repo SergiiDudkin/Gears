@@ -1,4 +1,5 @@
 import numpy as np
+from helpers import sci_round
 
 STANDARD_PRESSURE_ANGLE = np.deg2rad(20)
 STANDARD_ADDENDUM_COEF = 1
@@ -55,4 +56,12 @@ class GearParams:
         self.circular_pitch = self.module * np.pi
 
     def __str__(self):
-        return '\n'.join([f'{attr}: {getattr(self, attr)}' for attr in self.attrs_to_print])
+        output = (
+            f'tooth_num = {self.tooth_num}\n'
+            f'module = {self.module}\n'
+            f'pressure_angle = {sci_round(np.rad2deg(self.pressure_angle), 6)} deg\n'
+            f'addendum coeficient = {self.ad_coef}\n'
+            f'dedendum coeficient = {self.de_coef}\n'
+        )
+        output += '\n'.join([f'{attr} = {sci_round(getattr(self, attr), 6)} mm' for attr in self.attrs_to_print])
+        return output

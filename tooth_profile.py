@@ -3,6 +3,7 @@ from transforms import mirror, populate_circ, equidistant, stack_curves, is_with
 from curves import circle, involute, epitrochoid, epitrochoid_flat, involute_angrad, epitrochoid_angrad, epitrochoid_flat_angrad
 from gear_params import GearParams, STANDARD_PRESSURE_ANGLE, STANDARD_ADDENDUM_COEF, STANDARD_DEDENDUM_COEF
 from plots import simple_plot, multiple_plot
+from helpers import sci_round, indentate
 
 STEP = 0.1
 TOLERANCE = 0.1
@@ -58,11 +59,11 @@ class HalfTooth(GearParams):
         }
         self.outside_circle_params = {
             'r': self.outside_radius,
-            'a0': 0
+            # 'a0': 0
         }
         self.root_circle_params = {
             'r': self.root_radius,
-            'a0': 0
+            # 'a0': 0
         }
 
         invol_epitr_rad, invol_epitr_angle = self._calc_invol_epitr_flat() if self.is_rack else self._calc_invol_epitr()
@@ -151,6 +152,61 @@ class HalfTooth(GearParams):
         points_root = equidistant(circle, self.root_circle_lims, self.step, self.tolerance, **self.root_circle_params)
 
         self.half_tooth_profile = stack_curves(points_root, points_epitrochoid, points_involute, points_outside)
+
+    def get_curves_data(self):
+        return {
+            'involute': {
+                'x': 'r * (np.cos(t_) + t * np.sin(t_))',
+                'y': 'r * (np.sin(t_) - t * np.cos(t_))',
+                't_': 't + a0',
+                'params': self.involute_params,
+                'lims': self.involute_lims
+            },
+            'epitrochoid': {
+                'x': '(R - l) * np.cos(t_) + t * R * np.sin(t_)' if self.is_rack else
+                '(R + r) * np.cos(t_) - d * np.cos(R * t / r + t_)',
+                'y': '(R - l) * np.sin(t_) - t * R * np.cos(t_)' if self.is_rack else
+                '(R + r) * np.sin(t_) - d * np.sin(R * t / r + t_)',
+                't_': 't + a0',
+                'params': self.epitrochoid_params,
+                'lims': self.epitrochoid_lims
+            },
+            'outside circle': {
+                'x': 'r * np.cos(t)',
+                'y': 'r * np.sin(t)',
+                # 't_': 't + a0',
+                'params': self.outside_circle_params,
+                'lims': self.outside_circle_lims
+            },
+            'root circle': {
+                'x': 'r * np.cos(t)',
+                'y': 'r * np.sin(t)',
+                # 't_': 't + a0',
+                'params': self.root_circle_params,
+                'lims': self.root_circle_lims
+            }
+        }
+
+    def __str__(self):
+        # output = 'Gear parameters\n'
+        # output += indentate(super().__str__())
+        output = super().__str__()
+        curves_data = self.get_curves_data()
+        for curve_name in ('involute', 'epitrochoid', 'outside circle', 'root circle'):
+            curve = curves_data[curve_name]
+            curve_str = (
+                f'\n\n{curve_name.capitalize()}:'
+                f'\n\tx = {curve["x"]}'
+                f'\n\ty = {curve["y"]}'
+                # f'\n\tt_ = {curve["t_"]}'
+                # f'\n\tt = {sci_round(curve["lims"][0], 6)} ... {sci_round(curve["lims"][1], 6)}'
+            )
+            curve_str += f'\n\tt_ = {curve["t_"]}' if curve.get('t_') else ''
+            curve_str += f'\n\tt = {sci_round(curve["lims"][0], 6)} ... {sci_round(curve["lims"][1], 6)}'
+            curve_str += '\n\t' + '\n\t'.join(f'{k} = {sci_round(v, 6)}' for k, v in curve['params'].items())
+            # output += indentate(curve_str)
+            output += curve_str
+        return output
 
 
 class GearSector:
