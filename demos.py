@@ -80,7 +80,7 @@ if function == 'epitrochoid_flat':
     # ==================================================================================================================
     t_s = np.arange(-2, 2, 0.01)
     R = 4
-    l = 1
+    l = 1  # noqa: E741
     data0 = (epitrochoid_flat(t_s, R, l, a0=0), 'a0 = 0')
     data1 = (epitrochoid_flat(t_s, R, l, a0=0.5), 'a0 = 0.5')
     data2 = (epitrochoid_flat(t_s, R, l, a0=1), 'a0 = 1')
@@ -97,7 +97,7 @@ if function == 'epitrochoids_both':
     d = 3
     data0 = (epitrochoid(t_s, R, r, d), 'epitrochoid')
 
-    l = d - r
+    l = d - r  # noqa: E741
     data1 = (epitrochoid_flat(t_s, R, l), 'epitrochoid_flat')
 
     multiple_plot([data0, data1])
@@ -158,7 +158,8 @@ if function == 'populate_circ':
 #     pitch_diameter, outside_diameter, root_diameter, base_diameter, addendum, dedendum = gear_params
 #     inv_epitr_flat, angle = get_inv_epitr_flat(root_diameter, dedendum, STANDARD_PRESSURE_ANGLE)
 #     involute_points = get_involute_points(base_diameter, inv_epitr_flat, pitch_diameter, outside_diameter)
-#     points = build_tooth(root_diameter, involute_points, pitch_diameter, dedendum, inv_epitr_flat, base_diameter, tooth_num, outside_diameter)
+#     points = build_tooth(root_diameter, involute_points, pitch_diameter, dedendum, inv_epitr_flat, base_diameter,
+#                          tooth_num, outside_diameter)
 #     points = populate_circ(*points, tooth_num)
 #     simple_plot(*points, 'Involute')
 #

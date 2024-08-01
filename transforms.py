@@ -107,7 +107,7 @@ def equidistant(func, t_lims, step, tolerance, *args, **kwargs):
         total_dist = cum_dists[-1]
         seg_num = int(np.ceil(total_dist / step))
         dist_step = total_dist / seg_num
-        dist_range = np.arange(dist_step, total_dist, dist_step)[:seg_num-1]
+        dist_range = np.arange(dist_step, total_dist, dist_step)[:seg_num - 1]
         t_range = np.concatenate(([t_st], dist_t_interp_func(dist_range), [t_en]))
     else:
         print('WARNING! Number of iteration exceeded the limit.')

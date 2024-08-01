@@ -48,7 +48,7 @@ def epitrochoid(t, R, r, d, a0=0):
     return np.array([x, y])
 
 
-def epitrochoid_flat(t, R, l, a0=0):
+def epitrochoid_flat(t, R, l, a0=0):  # noqa: E741
     """
     Epitrochoid as a parametric equations: x(t), y(t). Edge case when r = inf, i. e. line is rolling around the fixed
     circle. The point is fixed against the line.

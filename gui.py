@@ -218,8 +218,8 @@ class InputFrame(Frame):
         Label(common_params_frame, text='Profile shift coef').grid(row=7, column=0, padx=2, pady=2, sticky=W)
         tcl_up_or_down = self.register(self.shift_callback)
         self.step = 0.05
-        self.profile_shift_coef = SpinboxValid(common_params_frame, check_abs_one, width=6, from_=-
-                                               1e10, to=1e10, increment=self.step, command=(tcl_up_or_down, '%d'), justify='right')
+        self.profile_shift_coef = SpinboxValid(common_params_frame, check_abs_one, width=6, from_=-1e10, to=1e10,
+                                               increment=self.step, command=(tcl_up_or_down, '%d'), justify='right')
         self.profile_shift_coef.grid(row=7, column=1, padx=2, pady=2, sticky=E)
         self.profile_shift_coef.strvar.set('0')
 
@@ -445,7 +445,7 @@ class GearsApp(Tk):
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
         if self.has_gear0:
-            self.gear_sector0 = GearSector(self.tooth0, self.tooth0, step_cnt=100, sector=(np.pi*1.5, np.pi*0.5),
+            self.gear_sector0 = GearSector(self.tooth0, self.tooth0, step_cnt=100, sector=(np.pi * 1.5, np.pi * 0.5),
                                            rot_ang=0, is_acw=False)
             self.rotating_gear_sector0 = iter(self.gear_sector0)
             ctr_circ = Circle((0, 0), self.gear_sector0.ht0.pitch_radius * 0.01, color='b')
@@ -454,7 +454,7 @@ class GearsApp(Tk):
             xy_lims = upd_xy_lims(0, 0, *xy_lims)
 
         if self.has_gear1:
-            self.gear_sector1 = GearSector(self.tooth1, self.tooth1, step_cnt=100, sector=(np.pi*0.5, np.pi*1.5),
+            self.gear_sector1 = GearSector(self.tooth1, self.tooth1, step_cnt=100, sector=(np.pi * 0.5, np.pi * 1.5),
                                            rot_ang=np.pi, is_acw=True)
             self.rotating_gear_sector1 = iter(self.gear_sector1)
             self.ctr_dist = self.gear_sector0.ht0.pitch_radius + self.gear_sector1.ht0.pitch_radius

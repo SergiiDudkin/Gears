@@ -84,7 +84,8 @@ class HalfTooth(GearParams):
         invol_epitr_rad, invol_epitr_angle = self._calc_invol_epitr_flat() if self.is_rack else self._calc_invol_epitr()
         self.is_tooth_undercut = invol_epitr_angle * 2 < np.pi
         if self.is_tooth_undercut:
-            involute_t_min, epitrochoid_t_max, r_curr = self._find_involute_epitrochoid_intersection()  # ToDo: Use r_curr or delete
+            involute_t_min, epitrochoid_t_max, r_curr = self._find_involute_epitrochoid_intersection()
+            # ToDo: Use r_curr or delete
         else:
             involute_t_min, epitrochoid_t_max = self._find_involute_epitrochoid_contact(invol_epitr_rad)
 
