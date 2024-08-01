@@ -1,8 +1,26 @@
 import numpy as np
-from transforms import mirror, populate_circ, equidistant, stack_curves, is_within_ang, rotate, cartesian_to_polar, polar_to_cartesian, upd_xy_lims
-from curves import circle, involute, epitrochoid, epitrochoid_flat, involute_angrad, epitrochoid_angrad, epitrochoid_flat_angrad
-from gear_params import GearParams, STANDARD_PRESSURE_ANGLE, STANDARD_ADDENDUM_COEF, STANDARD_DEDENDUM_COEF
+
+from curves import circle
+from curves import epitrochoid
+from curves import epitrochoid_angrad
+from curves import epitrochoid_flat
+from curves import epitrochoid_flat_angrad
+from curves import involute
+from curves import involute_angrad
+from gear_params import GearParams
+from gear_params import STANDARD_ADDENDUM_COEF
+from gear_params import STANDARD_DEDENDUM_COEF
+from gear_params import STANDARD_PRESSURE_ANGLE
 from helpers import sci_round
+from transforms import cartesian_to_polar
+from transforms import equidistant
+from transforms import is_within_ang
+from transforms import mirror
+from transforms import polar_to_cartesian
+from transforms import populate_circ
+from transforms import rotate
+from transforms import stack_curves
+from transforms import upd_xy_lims
 
 STEP = 0.1
 TOLERANCE = 0.1
@@ -130,7 +148,8 @@ class HalfTooth(GearParams):
         for _ in range(100):
             r_curr = np.mean([r_min, r_max])
             involute_ang, _, _, involute_t_min = involute_angrad(r_curr, 0, 1, **self.involute_params)
-            epitrochoid_ang, _, _, epitrochoid_t_max = self.my_epitrochoid_angrad(r_curr, 0, -0.1, **self.epitrochoid_params)
+            epitrochoid_ang, _, _, epitrochoid_t_max = self.my_epitrochoid_angrad(
+                r_curr, 0, -0.1, **self.epitrochoid_params)
             if involute_ang == epitrochoid_ang or not (r_min < r_curr < r_max):
                 break
             if involute_ang < epitrochoid_ang:
@@ -144,8 +163,10 @@ class HalfTooth(GearParams):
 
     def _build_half_tooth(self):
         points_involute = equidistant(involute, self.involute_lims, self.step, self.tolerance, **self.involute_params)
-        points_epitrochoid = equidistant(self.my_epitrochoid, self.epitrochoid_lims, self.step, self.tolerance, **self.epitrochoid_params)
-        points_outside = equidistant(circle, self.outside_circle_lims, self.step, self.tolerance, **self.outside_circle_params)
+        points_epitrochoid = equidistant(self.my_epitrochoid, self.epitrochoid_lims,
+                                         self.step, self.tolerance, **self.epitrochoid_params)
+        points_outside = equidistant(circle, self.outside_circle_lims, self.step,
+                                     self.tolerance, **self.outside_circle_params)
         points_root = equidistant(circle, self.root_circle_lims, self.step, self.tolerance, **self.root_circle_params)
 
         self.half_tooth_profile = stack_curves(points_root, points_epitrochoid, points_involute, points_outside)
@@ -261,9 +282,9 @@ class GearSector:
         teeth_sts_in_sector_bm |= teeth_sts == sec_en  # Bug fix for missing tooth
         teeth_ens_in_sector_bm = np.roll(teeth_sts_in_sector_bm, -1)
         seg_st_within_tooth_bm, seg_en_within_tooth_bm = [np.array([is_within_ang(seg_edge, tooth_st, tooth_en)
-                                                              for tooth_st, tooth_en
-                                                              in zip(teeth_sts, teeth_ens)])
-                                                    for seg_edge in (sec_st, sec_en)]
+                                                                    for tooth_st, tooth_en
+                                                                    in zip(teeth_sts, teeth_ens)])
+                                                          for seg_edge in (sec_st, sec_en)]
         integer_teeth = np.logical_not(seg_st_within_tooth_bm | seg_en_within_tooth_bm)
         full_teeth = teeth_sts_in_sector_bm & teeth_ens_in_sector_bm & integer_teeth
 

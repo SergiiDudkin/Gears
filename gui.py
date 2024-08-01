@@ -1,17 +1,23 @@
-from tkinter import *
-from tkinter import filedialog
+import os
 import tkinter.font as tkfont
 import tkinter.ttk as ttk
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from matplotlib.backend_bases import key_press_handler
-from matplotlib.pyplot import Circle
+from enum import auto
+from enum import Enum
+from tkinter import *
+from tkinter import filedialog
+
 import numpy as np
-import os
-from tooth_profile import HalfTooth, GearSector
-from transforms import upd_xy_lims, merge_xy_lims
-from enum import Enum, auto
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+from matplotlib.figure import Figure
+from matplotlib.pyplot import Circle
+
 from helpers import indentate
+from tooth_profile import GearSector
+from tooth_profile import HalfTooth
+from transforms import merge_xy_lims
+from transforms import upd_xy_lims
 
 
 class State(Enum):
@@ -90,6 +96,7 @@ class ToolbarPlayer(NavigationToolbar2Tk):
 
 class EntryValid(Entry):
     """General entry widget with validation. Validator func must be added as the 2nd argument."""
+
     def __init__(self, parent, validator, **kwargs):
         self.input_callback = parent.master.input_callback
         self.validator = validator
@@ -107,6 +114,7 @@ class EntryValid(Entry):
 
 class SpinboxValid(Spinbox):
     """General entry widget with validation. Validator func must be added as the 2nd argument."""
+
     def __init__(self, parent, validator, **kwargs):
         self.input_callback = parent.master.input_callback
         self.validator = validator
@@ -173,7 +181,7 @@ class InputFrame(Frame):
         self.pack(side=LEFT, fill=Y)
         self.input_fields = []
 
-            # Common
+        # Common
         common_params_frame = LabelFrame(self, labelwidget=Label(self, text='Common', font=('Times', 10, 'italic')),
                                          labelanchor=N)
         common_params_frame.pack(side=TOP, padx=2, pady=2, fill=X)
@@ -191,7 +199,8 @@ class InputFrame(Frame):
 
         Label(common_params_frame, text='Cutting tool:').grid(row=3, column=0, columnspan=2, padx=10, pady=2, sticky=W)
         self.cutter = IntVar()
-        Radiobutton(common_params_frame, text='rack or hob cutter', variable=self.cutter, value=0, selectcolor='lemon chiffon').grid(row=4, column=0, pady=2, sticky=W)
+        Radiobutton(common_params_frame, text='rack or hob cutter', variable=self.cutter,
+                    value=0, selectcolor='lemon chiffon').grid(row=4, column=0, pady=2, sticky=W)
 
         rb_frame = Frame(common_params_frame)
         rb_frame.grid(row=5, column=0, columnspan=2, pady=2, sticky=W)
@@ -202,17 +211,19 @@ class InputFrame(Frame):
         self.cutter_tooth_num.insert(END, '18')
         Label(rb_frame, text=' teeth').pack(side=LEFT)
 
-        Radiobutton(common_params_frame, text='mating gear', variable=self.cutter, value=2, selectcolor='lemon chiffon').grid(row=6, column=0, pady=2, sticky=W)
+        Radiobutton(common_params_frame, text='mating gear', variable=self.cutter, value=2,
+                    selectcolor='lemon chiffon').grid(row=6, column=0, pady=2, sticky=W)
         self.cutter.trace('w', self.cutter_callback)
 
         Label(common_params_frame, text='Profile shift coef').grid(row=7, column=0, padx=2, pady=2, sticky=W)
         tcl_up_or_down = self.register(self.shift_callback)
         self.step = 0.05
-        self.profile_shift_coef = SpinboxValid(common_params_frame, check_abs_one, width=6, from_=-1e10, to=1e10, increment=self.step, command=(tcl_up_or_down, '%d'), justify='right')
+        self.profile_shift_coef = SpinboxValid(common_params_frame, check_abs_one, width=6, from_=-
+                                               1e10, to=1e10, increment=self.step, command=(tcl_up_or_down, '%d'), justify='right')
         self.profile_shift_coef.grid(row=7, column=1, padx=2, pady=2, sticky=E)
         self.profile_shift_coef.strvar.set('0')
 
-            # Gear 1
+        # Gear 1
         params0_frame = LabelFrame(self, labelwidget=Label(self, text='Gear A', font=('Times', 10, 'italic')),
                                    labelanchor=N)
         params0_frame.pack(side=TOP, padx=2, pady=2, fill=X)
@@ -233,7 +244,7 @@ class InputFrame(Frame):
         self.de_coef0.grid(row=2, column=1, padx=2, pady=2, sticky=E)
         self.de_coef0.insert(END, '1')
 
-            # Gear 2
+        # Gear 2
         params1_frame = LabelFrame(self, labelwidget=Label(self, text='Gear B', font=('Times', 10, 'italic')),
                                    labelanchor=N)
         params1_frame.pack(side=TOP, padx=2, pady=2, fill=X)
@@ -337,6 +348,7 @@ class InputFrame(Frame):
 
 class GearsApp(Tk):
     """Gears app with GUI"""
+
     def __init__(self):
         super().__init__()
 
@@ -355,12 +367,12 @@ class GearsApp(Tk):
         notebook = ttk.Notebook(main_frame, width=10000, height=10000)
         notebook.pack(padx=2, pady=2, side=RIGHT)
 
-            # Plots frame
+        # Plots frame
         self.plots_frame = Frame(notebook)
         self.plots_frame.pack(side=LEFT, fill=BOTH, expand=True)
         notebook.add(self.plots_frame, text='Simulation')
 
-            # Text frame
+        # Text frame
         self.text_frame = Frame(notebook)
         self.text_frame.pack(side=LEFT, fill=BOTH, expand=True)
         notebook.add(self.text_frame, text='Data')
@@ -379,7 +391,7 @@ class GearsApp(Tk):
         self.txt.pack(side=RIGHT, pady=1, fill=BOTH, expand=True)
         self.txt.config(yscrollcommand=yscrollbar.set)
 
-            # Matplotlib canvas
+        # Matplotlib canvas
         self.fig = Figure(figsize=(10, 8))
         self.fig.set_tight_layout(True)
         self.fig.set_facecolor(self.cget("background"))
@@ -512,7 +524,8 @@ class GearsApp(Tk):
         self.txt.yview_moveto(1.0)
 
     def save_text(self):
-        filepath = filedialog.asksaveasfilename(filetypes=[('txt file', '.txt')], defaultextension='.txt', initialfile='params.txt')
+        filepath = filedialog.asksaveasfilename(
+            filetypes=[('txt file', '.txt')], defaultextension='.txt', initialfile='params.txt')
         with open(filepath, 'w') as output_file:
             output_file.write(self.txt.get("1.0", "end-1c"))
 
@@ -520,4 +533,3 @@ class GearsApp(Tk):
 if __name__ == '__main__':
     gears_app = GearsApp()
     gears_app.mainloop()
-    

@@ -1,10 +1,20 @@
 import numpy as np
-from plots import simple_plot, multiple_plot
-from curves import involute, epitrochoid, epitrochoid_flat
-from gear_params import STANDARD_PRESSURE_ANGLE, GearParams
-from transforms import mirror, make_angrad_func, cartesian_to_polar, populate_circ, equidistant, rotate
-# from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, HalfTooth
+
+from curves import epitrochoid
+from curves import epitrochoid_flat
+from curves import involute
+from gear_params import GearParams
+from gear_params import STANDARD_PRESSURE_ANGLE
+from plots import multiple_plot
+from plots import simple_plot
 from tooth_profile import HalfTooth
+from transforms import cartesian_to_polar
+from transforms import equidistant
+from transforms import make_angrad_func
+from transforms import mirror
+from transforms import populate_circ
+from transforms import rotate
+# from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, HalfTooth
 
 np.set_printoptions(linewidth=1000)
 
@@ -177,7 +187,6 @@ if function == 'HalfTooth':
     # multiple_plot([(tooth.raw_involute, 'involute'), (tooth.raw_epitrochoid, 'raw_epitrochoid'),
     #                (tooth.half_tooth_profile, 'half_tooth_profile')])
 
-
     # hta = cartesian_to_polar(*tooth.half_tooth_profile)[0]
     # print(hta[-1] - hta[0])
     # fta = cartesian_to_polar(*tooth.full_tooth_profile)[0]
@@ -194,18 +203,9 @@ if function == 'HalfTooth':
     # simple_plot(*tooth.half_tooth_profile, 'Half tooth profile', marker='o', markersize=1)
 
 
-
 if function == 'equidistant':
     # equidistant(involute, 0, 2, 0.1, 0.1, r=2)
     # simple_plot(*equidistant(involute, 0, 2, 0.1, 0.0001, r=2), 'Involute', marker='x', markersize=3)
     simple_plot(*equidistant(epitrochoid_flat, (0, 2), 0.1, 0.1, R=4, l=1), 'Involute', marker='x', markersize=3)
 
-#if function == '':
-
-
-
-
-
-
-
-
+# if function == '':
