@@ -1,12 +1,9 @@
 import numpy as np
-
 from curves import epitrochoid
 from curves import epitrochoid_flat
 from curves import involute
 from gear_params import GearParams
 from gear_params import STANDARD_PRESSURE_ANGLE
-from plots import multiple_plot
-from plots import simple_plot
 from tooth_profile import HalfTooth
 from transforms import cartesian_to_polar
 from transforms import equidistant
@@ -14,6 +11,9 @@ from transforms import make_angrad_func
 from transforms import mirror
 from transforms import populate_circ
 from transforms import rotate
+
+from plots import multiple_plot
+from plots import simple_plot
 # from tooth_profile import get_inv_epitr_flat, get_involute_points, build_tooth, get_epitrochoid_flat_point, HalfTooth
 
 np.set_printoptions(linewidth=1000)

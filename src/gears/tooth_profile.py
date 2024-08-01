@@ -1,5 +1,4 @@
 import numpy as np
-
 from curves import circle
 from curves import epitrochoid
 from curves import epitrochoid_angrad
