@@ -1,0 +1,6 @@
+*.pyc
+/*.png
+*.svg
+**/.DS_Store
+.idea/**
+dist/
