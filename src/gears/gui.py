@@ -30,16 +30,17 @@ from tkinter import X
 from tkinter import Y
 
 import numpy as np
-from helpers import indentate
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from matplotlib.figure import Figure
 from matplotlib.pyplot import Circle
-from tooth_profile import GearSector
-from tooth_profile import HalfTooth
-from transforms import merge_xy_lims
-from transforms import upd_xy_lims
+
+from .helpers import indentate
+from .tooth_profile import GearSector
+from .tooth_profile import HalfTooth
+from .transforms import merge_xy_lims
+from .transforms import upd_xy_lims
 
 
 class State(Enum):

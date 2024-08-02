@@ -1,25 +1,26 @@
 import numpy as np
-from curves import circle
-from curves import epitrochoid
-from curves import epitrochoid_angrad
-from curves import epitrochoid_flat
-from curves import epitrochoid_flat_angrad
-from curves import involute
-from curves import involute_angrad
-from gear_params import GearParams
-from gear_params import STANDARD_ADDENDUM_COEF
-from gear_params import STANDARD_DEDENDUM_COEF
-from gear_params import STANDARD_PRESSURE_ANGLE
-from helpers import sci_round
-from transforms import cartesian_to_polar
-from transforms import equidistant
-from transforms import is_within_ang
-from transforms import mirror
-from transforms import polar_to_cartesian
-from transforms import populate_circ
-from transforms import rotate
-from transforms import stack_curves
-from transforms import upd_xy_lims
+
+from .curves import circle
+from .curves import epitrochoid
+from .curves import epitrochoid_angrad
+from .curves import epitrochoid_flat
+from .curves import epitrochoid_flat_angrad
+from .curves import involute
+from .curves import involute_angrad
+from .gear_params import GearParams
+from .gear_params import STANDARD_ADDENDUM_COEF
+from .gear_params import STANDARD_DEDENDUM_COEF
+from .gear_params import STANDARD_PRESSURE_ANGLE
+from .helpers import sci_round
+from .transforms import cartesian_to_polar
+from .transforms import equidistant
+from .transforms import is_within_ang
+from .transforms import mirror
+from .transforms import polar_to_cartesian
+from .transforms import populate_circ
+from .transforms import rotate
+from .transforms import stack_curves
+from .transforms import upd_xy_lims
 
 STEP = 0.1
 TOLERANCE = 0.1

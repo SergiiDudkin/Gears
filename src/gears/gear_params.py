@@ -1,5 +1,6 @@
 import numpy as np
-from helpers import sci_round
+
+from .helpers import sci_round
 
 STANDARD_PRESSURE_ANGLE = np.deg2rad(20)
 STANDARD_ADDENDUM_COEF = 1

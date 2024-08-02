@@ -1,5 +1,6 @@
 import numpy as np
-from transforms import make_angrad_func
+
+from .transforms import make_angrad_func
 
 
 def circle(t, r, a0=0):
