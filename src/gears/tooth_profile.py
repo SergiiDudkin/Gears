@@ -1,4 +1,10 @@
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Iterator
+
 import numpy as np
+import numpy.typing as npt
 
 from .curves import circle
 from .curves import epitrochoid
@@ -27,9 +33,10 @@ TOLERANCE = 0.1
 
 
 class HalfTooth(GearParams):
-    def __init__(self, tooth_num, module, cutter_teeth_num=float('inf'), pressure_angle=STANDARD_PRESSURE_ANGLE,
-                 ad_coef=STANDARD_ADDENDUM_COEF, de_coef=STANDARD_DEDENDUM_COEF, step=STEP, tolerance=TOLERANCE,
-                 profile_shift_coef=0):
+    def __init__(self, tooth_num: int, module: float, cutter_teeth_num: float = float('inf'),
+                 pressure_angle: float = STANDARD_PRESSURE_ANGLE, ad_coef: float = STANDARD_ADDENDUM_COEF,
+                 de_coef: float = STANDARD_DEDENDUM_COEF, step: float = STEP, tolerance: float = TOLERANCE,
+                 profile_shift_coef: float = 0) -> None:
         super().__init__(tooth_num, module, pressure_angle, ad_coef, de_coef)
         self.cutter_teeth_num = cutter_teeth_num
         self.profile_shift_coef = profile_shift_coef
@@ -37,13 +44,13 @@ class HalfTooth(GearParams):
         self.tolerance = tolerance
 
         self.is_rack = not cutter_teeth_num
-        self.my_epitrochoid = epitrochoid_flat if self.is_rack else epitrochoid
+        self.my_epitrochoid = cast(Callable, epitrochoid_flat if self.is_rack else epitrochoid)
         self.my_epitrochoid_angrad = epitrochoid_flat_angrad if self.is_rack else epitrochoid_angrad
 
         self._calc_profile_params()
         self._build_half_tooth()
 
-    def _calc_profile_params(self):
+    def _calc_profile_params(self) -> None:
         self.quater_angle = self.tooth_angle / 4
 
         if self.is_rack:
@@ -95,15 +102,15 @@ class HalfTooth(GearParams):
         self.outside_circle_lims = (ang_outside - ang_pitch, self.quater_angle)
         self.root_circle_lims = (-self.quater_angle, -epitrochoid_shift_ang)
 
-    def _calc_shift_ang(self, radial_shift):
+    def _calc_shift_ang(self, radial_shift: float) -> float:
         circular_pitch = self.module * np.pi
         proj_onto_rack = radial_shift * np.tan(self.pressure_angle)
         return self.tooth_angle * proj_onto_rack / circular_pitch  # Shift angle
 
-    def _calc_epitrochoid_flat_shift_ang(self):
+    def _calc_epitrochoid_flat_shift_ang(self) -> float:
         return self._calc_shift_ang(self.dedendum)
 
-    def _calc_epitrochoid_shift_ang(self):
+    def _calc_epitrochoid_shift_ang(self) -> tuple[float, float, float]:
         gear_ratio = self.cutter_teeth_num / self.tooth_num
         cutter_base_radius = self.base_radius * gear_ratio
         cutter_pitch_radius = self.pitch_radius * gear_ratio
@@ -113,12 +120,24 @@ class HalfTooth(GearParams):
         epitrochoid_shift_ang = (outside_ang - pitch_ang) * gear_ratio
         return epitrochoid_shift_ang, cutter_pitch_radius, cutter_outside_radius
 
-    def _calc_invol_epitr_flat(self):
+    def _calc_invol_epitr_flat(self) -> tuple[float, float]:
+        """
+        Finds the transition point between involute and epitrochoid_flat.
+
+        Returns:
+            Radius and angle in polar coordinate system
+        """
         invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
         invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / invol_epitr_rad) + self.pressure_angle
         return invol_epitr_rad, invol_epitr_angle
 
-    def _calc_invol_epitr(self):
+    def _calc_invol_epitr(self) -> tuple[float, float]:
+        """
+        Finds the transition point between involute and epitrochoid.
+
+        Returns:
+            Radius and angle in polar coordinate system
+        """
         # Solve the first triangle using the law of sines
         b = self.cutter_teeth_num * self.module / 2  # Cutting gear pitch radius
         a = b + self.dedendum
@@ -137,12 +156,12 @@ class HalfTooth(GearParams):
         invol_epitr_rad, invol_epitr_angle = a_, beta_
         return invol_epitr_rad, invol_epitr_angle
 
-    def _find_involute_epitrochoid_contact(self, invol_epitr_rad):
+    def _find_involute_epitrochoid_contact(self, invol_epitr_rad: float) -> tuple[float, float]:
         involute_t_min = involute_angrad(invol_epitr_rad, 0, 1, **self.involute_params)[3]
         epitrochoid_t_max = self.my_epitrochoid_angrad(invol_epitr_rad, 0, -0.1, **self.epitrochoid_params)[3]
         return involute_t_min, epitrochoid_t_max
 
-    def _find_involute_epitrochoid_intersection(self):
+    def _find_involute_epitrochoid_intersection(self) -> tuple[float, float, float]:
         r_min = self.base_radius
         r_max = self.outside_radius
 
@@ -162,7 +181,7 @@ class HalfTooth(GearParams):
 
         return involute_t_min, epitrochoid_t_max, r_curr
 
-    def _build_half_tooth(self):
+    def _build_half_tooth(self) -> None:
         points_involute = equidistant(involute, self.involute_lims, self.step, self.tolerance, **self.involute_params)
         points_epitrochoid = equidistant(self.my_epitrochoid, self.epitrochoid_lims,
                                          self.step, self.tolerance, **self.epitrochoid_params)
@@ -172,7 +191,7 @@ class HalfTooth(GearParams):
 
         self.half_tooth_profile = stack_curves(points_root, points_epitrochoid, points_involute, points_outside)
 
-    def get_curves_data(self):
+    def get_curves_data(self) -> dict[str, dict[str, Any]]:
         return {
             'involute': {
                 'x': 'r * (np.cos(t_) + t * np.sin(t_))',
@@ -204,7 +223,7 @@ class HalfTooth(GearParams):
             }
         }
 
-    def __str__(self):
+    def __str__(self) -> str:
         output = super().__str__()
         curves_data = self.get_curves_data()
         for curve_name in ('involute', 'epitrochoid', 'outside circle', 'root circle'):
@@ -222,7 +241,8 @@ class HalfTooth(GearParams):
 
 
 class GearSector:
-    def __init__(self, halftooth0, halftooth1, step_cnt=100, sector=(0, np.pi), rot_ang=0, is_acw=False):
+    def __init__(self, halftooth0: HalfTooth, halftooth1: HalfTooth, step_cnt: int = 100,
+                 sector: tuple[float, float] = (0, np.pi), rot_ang: float = 0, is_acw: bool = False) -> None:
         self.ht0 = halftooth0
         self.ht1 = halftooth1
         self.step_cnt = step_cnt
@@ -233,22 +253,23 @@ class GearSector:
         self.i = self.step_cnt - 1
         self._build_full_tooth()
 
-    def _build_full_tooth(self):
+    def _build_full_tooth(self) -> None:
         sec_st = np.array([0, 0])
         sec_en = np.array([np.cos(-self.ht0.quater_angle), np.sin(-self.ht0.quater_angle)])
         reflected = np.transpose([mirror(point, sec_st, sec_en) for point in np.transpose(self.ht1.half_tooth_profile)])
         self.full_tooth_profile = stack_curves(reflected[:, ::-1], self.ht0.half_tooth_profile)
 
-    def get_gear_profile(self):
+    def get_gear_profile(self) -> npt.NDArray:
         """Returns the entire gear profile"""
-        return populate_circ(*self.full_tooth_profile, self.ht0.tooth_num)
+        return populate_circ(*self.full_tooth_profile, self.ht0.tooth_num)  # type: ignore[call-arg]
 
-    def get_sector_profile(self, sec_st, sec_en, rot_ang=0):
+    def get_sector_profile(self, sec_st: float, sec_en: float, rot_ang: float = 0) -> npt.NDArray:
         st_tooth_idx, full_teeth_ins, en_tooth_idx = self._sortout_teeth(sec_st, sec_en, rot_ang)
 
         if not full_teeth_ins.size and st_tooth_idx == en_tooth_idx:
             # Case of a single tooth within the sector
-            tooth = rotate(*self.full_tooth_profile, self.ht0.tooth_angle * st_tooth_idx + rot_ang)
+            tooth = rotate(*self.full_tooth_profile, self.ht0.tooth_angle *
+                           st_tooth_idx + rot_ang)  # type: ignore[call-arg]
             tooth_ang = cartesian_to_polar(*tooth)[0]
             tooth_in_sector_bm = is_within_ang(tooth_ang, sec_st, sec_en)
             pt_ins = np.nonzero(tooth_in_sector_bm)[0]
@@ -264,7 +285,8 @@ class GearSector:
             curves.append(st_tooth)
 
             for full_tooth_idx in full_teeth_ins:
-                full_tooth = rotate(*self.full_tooth_profile, self.ht0.tooth_angle * full_tooth_idx + rot_ang)
+                full_tooth = rotate(*self.full_tooth_profile, self.ht0.tooth_angle *
+                                    full_tooth_idx + rot_ang)  # type: ignore[call-arg]
                 curves.append(full_tooth)
 
             en_tooth = self._get_term_tooth_profile(en_tooth_idx, sec_st, sec_en, rot_ang, is_en=True)
@@ -274,7 +296,7 @@ class GearSector:
 
         return sector_profile
 
-    def _sortout_teeth(self, sec_st, sec_en, rot_ang=0):
+    def _sortout_teeth(self, sec_st: float, sec_en: float, rot_ang: float = 0) -> tuple[int, npt.NDArray, int]:
         ang0 = cartesian_to_polar(*self.full_tooth_profile[:, 0])[0] + rot_ang
         teeth_sts = np.remainder(ang0 + self.ht0.tooth_angle * np.arange(self.ht0.tooth_num), np.pi * 2)
         teeth_ens = np.roll(teeth_sts, -1)
@@ -298,8 +320,9 @@ class GearSector:
 
         return st_tooth_idx, full_teeth_ins, en_tooth_idx
 
-    def _get_term_tooth_profile(self, tooth_idx, sec_st, sec_en, rot_ang=0, is_en=False):
-        tooth = rotate(*self.full_tooth_profile, self.ht0.tooth_angle * tooth_idx + rot_ang)
+    def _get_term_tooth_profile(self, tooth_idx: int, sec_st: float, sec_en: float, rot_ang: float = 0,
+                                is_en: bool = False) -> npt.NDArray:
+        tooth = rotate(*self.full_tooth_profile, self.ht0.tooth_angle * tooth_idx + rot_ang)  # type: ignore[call-arg]
         tooth_ang = cartesian_to_polar(*tooth)[0]
         tooth_in_sector_bm = is_within_ang(tooth_ang, sec_st, sec_en)
         try:
@@ -308,14 +331,14 @@ class GearSector:
             pt_idx = -1 + is_en
         return tooth[:, :pt_idx] if is_en else tooth[:, pt_idx:]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[npt.NDArray]:
         ang_step = self.ht0.tooth_angle / self.step_cnt
         dir_ = self.is_acw * 2 - 1  # Bool to sign
         while True:
             self.i = (self.i + 1) % self.step_cnt
             yield self.get_sector_profile(self.sec_st, self.sec_en, (ang_step * self.i + self.rot_ang) * dir_)
 
-    def get_limits(self):
+    def get_limits(self) -> tuple[float, float, float, float]:
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
         for ang in (self.sec_st, self.sec_en):
             for rad in (self.ht0.root_radius, self.ht0.outside_radius):

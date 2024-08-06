@@ -26,15 +26,22 @@ from tkinter import Text
 from tkinter import Tk
 from tkinter import TOP
 from tkinter import W
+from tkinter import Widget
 from tkinter import X
 from tkinter import Y
+from typing import Callable
+from typing import cast
+from typing import Optional
 
 import numpy as np
-from matplotlib.backend_bases import key_press_handler
+import numpy.typing as npt
+from matplotlib.backend_bases import key_press_handler  # type: ignore[attr-defined]
+from matplotlib.backend_bases import KeyEvent
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from matplotlib.figure import Figure
-from matplotlib.pyplot import Circle
+from matplotlib.lines import Line2D
+from matplotlib.pyplot import Circle  # type: ignore[attr-defined]
 
 from .helpers import indentate
 from .tooth_profile import GearSector
@@ -44,15 +51,16 @@ from .transforms import upd_xy_lims
 
 
 class State(Enum):
-    PAUSE = auto()
-    RESUME = auto()
-    RESET = auto()
-    PLAY = auto()
+    PAUSE: int = auto()
+    RESUME: int = auto()
+    RESET: int = auto()
+    PLAY: int = auto()
 
 
 class ToolbarPlayer(NavigationToolbar2Tk):
-    def __init__(self, canvas, window, callback_play, callback_next_frame, callback_pause, callback_resume,
-                 callback_stop):
+    def __init__(self, canvas: FigureCanvasTkAgg, window: Widget, callback_play: Callable[[], None],
+                 callback_next_frame: Callable[[], None], callback_pause: Callable[[], None],
+                 callback_resume: Callable[[], None], callback_stop: Callable[[], None]) -> None:
         self.callback_play = callback_play
         self.callback_pause = callback_pause
         self.callback_resume = callback_resume
@@ -138,8 +146,8 @@ class EntryValid(Entry):
 class SpinboxValid(Spinbox):
     """General entry widget with validation. Validator func must be added as the 2nd argument."""
 
-    def __init__(self, parent, validator, **kwargs):
-        self.input_callback = parent.master.input_callback
+    def __init__(self, parent: Widget, validator, **kwargs):
+        self.input_callback = cast(InputFrame, parent.master).input_callback
         self.validator = validator
         self.strvar = StringVar(parent)
         self.strvar.trace('w', self.entry_callback)
@@ -147,13 +155,13 @@ class SpinboxValid(Spinbox):
         super().__init__(parent, **kwargs)
         self.entry_callback()
 
-    def entry_callback(self, *args):
+    def entry_callback(self, *args) -> None:
         self.is_valid = self.validator(self.strvar.get())
         self['bg'] = 'lemon chiffon' if self.is_valid else '#fca7b8'
         self.input_callback()
 
 
-def check_pos_int(strvar):
+def check_pos_int(strvar: str) -> bool:
     try:
         num = int(strvar)
     except ValueError:
@@ -161,7 +169,7 @@ def check_pos_int(strvar):
     return True if num > 0 else False
 
 
-def check_pos_finite(strvar):
+def check_pos_finite(strvar: str) -> bool:
     try:
         num = float(strvar)
     except ValueError:
@@ -169,7 +177,7 @@ def check_pos_finite(strvar):
     return True if (num > 0 and num != float('inf')) else False
 
 
-def check_90_deg(strvar):
+def check_90_deg(strvar: str) -> bool:
     try:
         num = float(strvar)
     except ValueError:
@@ -177,7 +185,7 @@ def check_90_deg(strvar):
     return True if (0 < num < 90) else False
 
 
-def check_float(strvar):
+def check_float(strvar: str) -> bool:
     try:
         float(strvar)
         return True
@@ -185,7 +193,7 @@ def check_float(strvar):
         return False
 
 
-def check_abs_one(strvar):
+def check_abs_one(strvar: str) -> bool:
     try:
         num = float(strvar)
     except ValueError:
@@ -193,13 +201,13 @@ def check_abs_one(strvar):
     return True if np.abs(num) <= 1 else False
 
 
-def get_entry_valid_recur(widget):
+def get_entry_valid_recur(widget: Widget) -> list[EntryValid | SpinboxValid]:
     return [widget] if isinstance(widget, EntryValid | SpinboxValid) \
         else [item for child in widget.winfo_children() for item in get_entry_valid_recur(child)]
 
 
 class InputFrame(Frame):
-    def __init__(self, parent):
+    def __init__(self, parent: Widget) -> None:
         super().__init__(parent)
         self.pack(side=LEFT, fill=Y)
         self.input_fields = []
@@ -227,7 +235,7 @@ class InputFrame(Frame):
 
         rb_frame = Frame(common_params_frame)
         rb_frame.grid(row=5, column=0, columnspan=2, pady=2, sticky=W)
-        common_params_frame.input_callback = self.input_callback
+        common_params_frame.input_callback = self.input_callback  # type: ignore[attr-defined]
         Radiobutton(rb_frame, text='gear, ', variable=self.cutter, value=1, selectcolor='lemon chiffon').pack(side=LEFT)
         self.cutter_tooth_num = EntryValid(rb_frame, check_pos_int, width=6, justify='right')
         self.cutter_tooth_num.pack(side=LEFT)
@@ -292,17 +300,17 @@ class InputFrame(Frame):
         self.cutter_callback()
 
     # Input callbacks
-    def input_callback(self):
+    def input_callback(self) -> None:
         if self.input_fields:
             if all([field.is_valid for field in self.input_fields]):
-                self.master.master.toolbar.activate()
+                self.master.master.toolbar.activate()  # type: ignore[union-attr]
             else:
-                self.master.master.toolbar.deactivate()
+                self.master.master.toolbar.deactivate()  # type: ignore[union-attr]
 
-    def cutter_callback(self, *args):
+    def cutter_callback(self, *args) -> None:
         self.cutter_tooth_num.config(state=(NORMAL if self.cutter.get() == 1 else DISABLED))
 
-    def shift_callback(self, direction):
+    def shift_callback(self, direction: str) -> None:
         self.profile_shift_coef.entry_callback()
         dir_ = 1 if direction == 'up' else -1
         affected_vars = ((self.ad_coef0, 1), (self.de_coef0, -1), (self.ad_coef1, -1), (self.de_coef1, 1))
@@ -316,50 +324,50 @@ class InputFrame(Frame):
 
     # Value getters
     @property
-    def module_val(self):
+    def module_val(self) -> float:
         return float(self.module.strvar.get())
 
     @property
-    def pressure_angle_val(self):
+    def pressure_angle_val(self) -> float:
         return np.deg2rad(float(self.pressure_angle.strvar.get()))
 
     @property
-    def tooth_num0_val(self):
+    def tooth_num0_val(self) -> int:
         return int(self.tooth_num0.strvar.get())
 
     @property
-    def ad_coef0_val(self):
+    def ad_coef0_val(self) -> float:
         return float(self.ad_coef0.strvar.get())
 
     @property
-    def de_coef0_val(self):
+    def de_coef0_val(self) -> float:
         return float(self.de_coef0.strvar.get())
 
     @property
-    def tooth_num1_val(self):
+    def tooth_num1_val(self) -> int:
         return int(self.tooth_num1.strvar.get())
 
     @property
-    def ad_coef1_val(self):
+    def ad_coef1_val(self) -> float:
         return float(self.ad_coef1.strvar.get())
 
     @property
-    def de_coef1_val(self):
+    def de_coef1_val(self) -> float:
         return float(self.de_coef1.strvar.get())
 
     @property
-    def cutter_teeth_num0(self):
+    def cutter_teeth_num0(self) -> int:
         return self.cutter_teeth_num_val(0)
 
     @property
-    def cutter_teeth_num1(self):
+    def cutter_teeth_num1(self) -> int:
         return self.cutter_teeth_num_val(1)
 
     @property
-    def profile_shift_coef_val(self):
+    def profile_shift_coef_val(self) -> float:
         return float(self.profile_shift_coef.strvar.get())
 
-    def cutter_teeth_num_val(self, gear_idx):
+    def cutter_teeth_num_val(self, gear_idx: int) -> int:
         cutter_val = self.cutter.get()
         if cutter_val == 0:
             return 0
@@ -372,7 +380,7 @@ class InputFrame(Frame):
 class GearsApp(Tk):
     """Gears app with GUI"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         # Window setup
@@ -416,15 +424,15 @@ class GearsApp(Tk):
 
         # Matplotlib canvas
         self.fig = Figure(figsize=(10, 8))
-        self.fig.set_tight_layout(True)
+        self.fig.set_tight_layout(True)  # type: ignore[attr-defined]
         self.fig.set_facecolor(self.cget("background"))
         self.ax = self.fig.add_subplot()
-        self.ax.set_aspect('equal', 'box')
+        self.ax.set_aspect('equal', 'box')  # type: ignore[attr-defined]
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plots_frame)
-        self.ax.plot([], [], color='b', linewidth=1)
-        self.ax.plot([], [], color='r', linewidth=1)
-        self.ax.set_xlim((0, 1))
-        self.ax.set_ylim((0, 1))
+        self.ax.plot([], [], color='b', linewidth=1)  # type: ignore[call-arg]
+        self.ax.plot([], [], color='r', linewidth=1)  # type: ignore[call-arg]
+        self.ax.set_xlim((0, 1))  # type: ignore[arg-type]
+        self.ax.set_ylim((0, 1))  # type: ignore[arg-type]
         self.toolbar = ToolbarPlayer(self.canvas, self.plots_frame, self.play, self.next_frame, self.pause,
                                      self.resume, self.stop)
         self.canvas.get_tk_widget().pack(side=TOP, padx=0, pady=1, fill=BOTH, expand=1)
@@ -432,23 +440,23 @@ class GearsApp(Tk):
 
         self.inputs.input_callback()
         self.delay_ms = 1
-        self.after_id = None
+        self.after_id: Optional[str] = None
         self.has_gear0 = True
         self.has_gear1 = True
 
     # Matplotlib funcs
-    def on_key_press(self, event):
+    def on_key_press(self, event: KeyEvent) -> None:
         key_press_handler(event, self.canvas, self.toolbar)
 
-    def plot_data(self, line, x_vals, y_vals):
+    def plot_data(self, line: Line2D, x_vals: npt.NDArray, y_vals: npt.NDArray) -> None:
         line.set_xdata(np.array(x_vals))
         line.set_ydata(np.array(y_vals))
-        self.ax.relim()  # Recompute the ax.dataLim
-        self.ax.autoscale_view()  # Update ax.viewLim using the new dataLim
+        self.ax.relim()  # type: ignore[attr-defined] # Recompute the ax.dataLim
+        self.ax.autoscale_view()  # type: ignore[attr-defined] # Update ax.viewLim using the new dataLim
         self.canvas.draw()
 
     # Button callbacks
-    def play(self, event=None):
+    def play(self, event: Optional[KeyEvent] = None) -> None:
         self.break_loop()
         self.toolbar.play_state()
 
@@ -472,7 +480,7 @@ class GearsApp(Tk):
                                            rot_ang=0, is_acw=False)
             self.rotating_gear_sector0 = iter(self.gear_sector0)
             ctr_circ = Circle((0, 0), self.gear_sector0.ht0.pitch_radius * 0.01, color='b')
-            self.ax.add_patch(ctr_circ)
+            self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
             xy_lims = merge_xy_lims(*xy_lims, *self.gear_sector0.get_limits())
             xy_lims = upd_xy_lims(0, 0, *xy_lims)
 
@@ -482,7 +490,7 @@ class GearsApp(Tk):
             self.rotating_gear_sector1 = iter(self.gear_sector1)
             self.ctr_dist = self.gear_sector0.ht0.pitch_radius + self.gear_sector1.ht0.pitch_radius
             ctr_circ = Circle((self.ctr_dist, 0), self.gear_sector1.ht0.pitch_radius * 0.01, color='r')
-            self.ax.add_patch(ctr_circ)
+            self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
             xy_lims_ = self.gear_sector1.get_limits()
             xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + self.ctr_dist, xy_lims_[1], xy_lims_[2] + self.ctr_dist,
                                     xy_lims_[3])
@@ -490,8 +498,8 @@ class GearsApp(Tk):
 
         min_x, min_y, max_x, max_y = xy_lims
         margin = max(max_x - min_x, max_y - min_y) * 0.05
-        self.ax.set_xlim((min_x - margin, max_x + margin))
-        self.ax.set_ylim((min_y - margin, max_y + margin))
+        self.ax.set_xlim((min_x - margin, max_x + margin))  # type: ignore[arg-type]
+        self.ax.set_ylim((min_y - margin, max_y + margin))  # type: ignore[arg-type]
 
         self.text_msg(
             'Gear A parameters\n\n'
@@ -501,52 +509,52 @@ class GearsApp(Tk):
         )
         self.show_next_frame()
 
-    def next_frame(self):
+    def next_frame(self) -> None:
         self.show_next_frame()
         self.break_loop()
 
-    def pause(self, event=None):
+    def pause(self, event: Optional[KeyEvent] = None) -> None:
         self.break_loop()
         self.toolbar.pause_state()
 
-    def resume(self, event=None):
+    def resume(self, event: Optional[KeyEvent] = None) -> None:
         self.toolbar.resume_state()
         self.show_next_frame()
 
-    def stop(self):
+    def stop(self) -> None:
         self.break_loop()
         self.reset()
 
     # Helpers
-    def show_next_frame(self):
+    def show_next_frame(self) -> None:
         if self.has_gear0:
-            self.plot_data(self.ax.lines[0], *next(self.rotating_gear_sector0))
+            self.plot_data(self.ax.lines[0], *next(self.rotating_gear_sector0))  # type: ignore[attr-defined]
         if self.has_gear1:
             x_es, y_es = next(self.rotating_gear_sector1)
-            self.plot_data(self.ax.lines[1], x_es + self.ctr_dist, y_es)
+            self.plot_data(self.ax.lines[1], x_es + self.ctr_dist, y_es)  # type: ignore[attr-defined]
         self.toolbar.upd_frame_num(self.gear_sector0.i)
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
 
-    def break_loop(self):
+    def break_loop(self) -> None:
         """Stop circulating frames"""
         if self.after_id is not None:
             self.after_cancel(self.after_id)
             self.after_id = None
 
-    def reset(self):
+    def reset(self) -> None:
         """Restore initial appearance"""
-        [patch.remove() for patch in self.ax.patches]
-        [self.plot_data(line, [], []) for line in self.ax.lines]
+        [patch.remove() for patch in self.ax.patches]  # type: ignore[attr-defined]
+        [self.plot_data(line, [], []) for line in self.ax.lines]  # type: ignore[attr-defined, arg-type, func-returns-value] # noqa: E501
         self.toolbar.reset_state()
 
-    def text_msg(self, msg):
+    def text_msg(self, msg: str) -> None:
         self.txt.configure(state='normal')
         self.txt.delete(1.0, END)
         self.txt.insert(END, msg)
         self.txt.configure(state='disabled')
         self.txt.yview_moveto(1.0)
 
-    def save_text(self):
+    def save_text(self) -> None:
         filepath = filedialog.asksaveasfilename(
             filetypes=[('txt file', '.txt')], defaultextension='.txt', initialfile='params.txt')
         with open(filepath, 'w') as output_file:

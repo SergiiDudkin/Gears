@@ -1,16 +1,19 @@
 import numpy as np
+import numpy.typing as npt
 
 from .transforms import make_angrad_func
 
+ArrOrNum = npt.NDArray | float
 
-def circle(t, r, a0=0):
+
+def circle(t: ArrOrNum, r: float, a0: float = 0) -> npt.NDArray:
     t_ = t + a0
     x = r * np.cos(t_)
     y = r * np.sin(t_)
     return np.array([x, y])
 
 
-def involute(t, r, a0=0):
+def involute(t: ArrOrNum, r: float, a0: float = 0) -> npt.NDArray:
     """
     Involute of circle as a parametric equations: x(t), y(t). See https://en.wikipedia.org/wiki/Involute.
 
@@ -28,7 +31,7 @@ def involute(t, r, a0=0):
     return np.array([x, y])
 
 
-def epitrochoid(t, R, r, d, a0=0):
+def epitrochoid(t: ArrOrNum, R: float, r: float, d: float, a0: float = 0) -> npt.NDArray:
     """
     Epitrochoid as a parametric equations: x(t), y(t). See https://en.wikipedia.org/wiki/Epitrochoid.
 
@@ -48,10 +51,10 @@ def epitrochoid(t, R, r, d, a0=0):
     return np.array([x, y])
 
 
-def epitrochoid_flat(t, R, l, a0=0):  # noqa: E741
+def epitrochoid_flat(t: ArrOrNum, R: float, l: float, a0: float = 0) -> npt.NDArray:  # noqa: E741
     """
-    Epitrochoid as a parametric equations: x(t), y(t). Edge case when r = inf, i. e. line is rolling around the fixed
-    circle. The point is fixed against the line.
+    Epitrochoid as a parametric equations: x(t), y(t). Edge case when r = inf, i.e. line is rolling around the fixed
+    circle. The point is fixed at certain distance against the line.
 
     Args:
         t: Polar angle of the tangent point.
