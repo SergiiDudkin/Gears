@@ -3,6 +3,7 @@ import tkinter.font as tkfont
 import tkinter.ttk as ttk
 from enum import auto
 from enum import Enum
+from tkinter import BooleanVar
 from tkinter import BOTH
 from tkinter import BOTTOM
 from tkinter import Button
@@ -11,11 +12,13 @@ from tkinter import E
 from tkinter import END
 from tkinter import Entry
 from tkinter import filedialog
+from tkinter import FLAT
 from tkinter import Frame
 from tkinter import IntVar
 from tkinter import Label
 from tkinter import LabelFrame
 from tkinter import LEFT
+from tkinter import Menu
 from tkinter import N
 from tkinter import NORMAL
 from tkinter import Radiobutton
@@ -388,6 +391,17 @@ class GearsApp(Tk):
         self.geometry('1000x800')
         self.resizable(True, True)
 
+        menubar = Menu(self, relief=FLAT, bg='gray88')
+        viewmenu = Menu(menubar, tearoff=0)
+        self.has_gear0 = BooleanVar(self, True)  # Menu checkbutton variable
+        self.has_gear1 = BooleanVar(self, True)  # Menu checkbutton variable
+        viewmenu.add_checkbutton(label='Gear A', onvalue=True, offvalue=False, variable=self.has_gear0,
+                                 command=lambda: self.show_gear(0))
+        viewmenu.add_checkbutton(label='Gear B', onvalue=True, offvalue=False, variable=self.has_gear1,
+                                 command=lambda: self.show_gear(1))
+        menubar.add_cascade(label='View', menu=viewmenu)
+        self.config(menu=menubar)
+
         # Frames
         main_frame = Frame(self)
         main_frame.pack(padx=2, pady=2, side=LEFT, fill=BOTH, expand=True)
@@ -437,12 +451,27 @@ class GearsApp(Tk):
                                      self.resume, self.stop)
         self.canvas.get_tk_widget().pack(side=TOP, padx=0, pady=1, fill=BOTH, expand=1)
         self.canvas.mpl_connect("key_press_event", self.on_key_press)
+        self.gear0data: npt.NDArray = np.array([[], []])
+        self.gear1data: npt.NDArray = np.array([[], []])
 
         self.inputs.input_callback()
         self.delay_ms = 1
         self.after_id: Optional[str] = None
-        self.has_gear0 = True
-        self.has_gear1 = True
+
+    def show_gear(self, idx: int) -> None:
+        """
+        Show or hide a gear depending on the corresponding checkbox variable.
+
+        Args:
+            idx: Gear index.
+
+        Returns:
+            None.
+        """
+        flag = getattr(self, f'has_gear{idx}').get()
+        self.ax.patches[idx].set_visible(flag)  # type: ignore[attr-defined]
+        self.plot_data(self.ax.lines[idx],  # type: ignore[attr-defined]
+                       *(getattr(self, f'gear{idx}data') if flag else np.array([[], []])))
 
     # Matplotlib funcs
     def on_key_press(self, event: KeyEvent) -> None:
@@ -475,26 +504,24 @@ class GearsApp(Tk):
 
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
-        if self.has_gear0:
-            self.gear_sector0 = GearSector(self.tooth0, self.tooth0, step_cnt=100, sector=(np.pi * 1.5, np.pi * 0.5),
-                                           rot_ang=0, is_acw=False)
-            self.rotating_gear_sector0 = iter(self.gear_sector0)
-            ctr_circ = Circle((0, 0), self.gear_sector0.ht0.pitch_radius * 0.01, color='b')
-            self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
-            xy_lims = merge_xy_lims(*xy_lims, *self.gear_sector0.get_limits())
-            xy_lims = upd_xy_lims(0, 0, *xy_lims)
+        self.gear_sector0 = GearSector(self.tooth0, self.tooth0, step_cnt=100, sector=(np.pi * 1.5, np.pi * 0.5),
+                                       rot_ang=0, is_acw=False)
+        self.rotating_gear_sector0 = iter(self.gear_sector0)
+        ctr_circ = Circle((0, 0), self.gear_sector0.ht0.pitch_radius * 0.01, color='b')
+        self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
+        xy_lims = merge_xy_lims(*xy_lims, *self.gear_sector0.get_limits())
+        xy_lims = upd_xy_lims(0, 0, *xy_lims)
 
-        if self.has_gear1:
-            self.gear_sector1 = GearSector(self.tooth1, self.tooth1, step_cnt=100, sector=(np.pi * 0.5, np.pi * 1.5),
-                                           rot_ang=np.pi, is_acw=True)
-            self.rotating_gear_sector1 = iter(self.gear_sector1)
-            self.ctr_dist = self.gear_sector0.ht0.pitch_radius + self.gear_sector1.ht0.pitch_radius
-            ctr_circ = Circle((self.ctr_dist, 0), self.gear_sector1.ht0.pitch_radius * 0.01, color='r')
-            self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
-            xy_lims_ = self.gear_sector1.get_limits()
-            xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + self.ctr_dist, xy_lims_[1], xy_lims_[2] + self.ctr_dist,
-                                    xy_lims_[3])
-            xy_lims = upd_xy_lims(self.ctr_dist, 0, *xy_lims)
+        self.gear_sector1 = GearSector(self.tooth1, self.tooth1, step_cnt=100, sector=(np.pi * 0.5, np.pi * 1.5),
+                                       rot_ang=np.pi, is_acw=True)
+        self.rotating_gear_sector1 = iter(self.gear_sector1)
+        self.ctr_dist = self.gear_sector0.ht0.pitch_radius + self.gear_sector1.ht0.pitch_radius
+        ctr_circ = Circle((self.ctr_dist, 0), self.gear_sector1.ht0.pitch_radius * 0.01, color='r')
+        self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
+        xy_lims_ = self.gear_sector1.get_limits()
+        xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + self.ctr_dist, xy_lims_[1], xy_lims_[2] + self.ctr_dist,
+                                xy_lims_[3])
+        xy_lims = upd_xy_lims(self.ctr_dist, 0, *xy_lims)
 
         min_x, min_y, max_x, max_y = xy_lims
         margin = max(max_x - min_x, max_y - min_y) * 0.05
@@ -527,11 +554,11 @@ class GearsApp(Tk):
 
     # Helpers
     def show_next_frame(self) -> None:
-        if self.has_gear0:
-            self.plot_data(self.ax.lines[0], *next(self.rotating_gear_sector0))  # type: ignore[attr-defined]
-        if self.has_gear1:
-            x_es, y_es = next(self.rotating_gear_sector1)
-            self.plot_data(self.ax.lines[1], x_es + self.ctr_dist, y_es)  # type: ignore[attr-defined]
+        self.gear0data = next(self.rotating_gear_sector0)
+        x_es, y_es = next(self.rotating_gear_sector1)
+        self.gear1data = np.vstack((x_es + self.ctr_dist, y_es))
+        for i in range(2):
+            self.show_gear(i)
         self.toolbar.upd_frame_num(self.gear_sector0.i)
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
 
