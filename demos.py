@@ -1,10 +1,15 @@
 import numpy as np
 
 from src.gears import angle_vec
+from src.gears import rotate
 
 
-angle = angle_vec(np.array([1, 0]), np.array([-1, 0])) / np.pi
-print(angle)
+# angle = angle_vec(np.array([1, 0]), np.array([-1, 0])) / np.pi
+# print(angle)
+
+vec = rotate(1, 0, np.pi / 2)
+print(vec)
+
 
 # import numpy as np
 # from curves import epitrochoid

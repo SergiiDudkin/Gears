@@ -48,6 +48,7 @@ from matplotlib.pyplot import Circle  # type: ignore[attr-defined]
 
 from .helpers import indentate
 from .tooth_profile import GearSector
+from .tooth_profile import get_action_line
 from .tooth_profile import HalfTooth
 from .transforms import merge_xy_lims
 from .transforms import upd_xy_lims
@@ -391,14 +392,18 @@ class GearsApp(Tk):
         self.geometry('1000x800')
         self.resizable(True, True)
 
+        # Menubar
         menubar = Menu(self, relief=FLAT, bg='gray88')
         viewmenu = Menu(menubar, tearoff=0)
         self.has_gear0 = BooleanVar(self, True)  # Menu checkbutton variable
         self.has_gear1 = BooleanVar(self, True)  # Menu checkbutton variable
+        self.has_action_line = BooleanVar(self, False)  # Menu checkbutton variable
         viewmenu.add_checkbutton(label='Gear A', onvalue=True, offvalue=False, variable=self.has_gear0,
                                  command=lambda: self.show_gear(0))
         viewmenu.add_checkbutton(label='Gear B', onvalue=True, offvalue=False, variable=self.has_gear1,
                                  command=lambda: self.show_gear(1))
+        viewmenu.add_checkbutton(label='Action line', onvalue=True, offvalue=False, variable=self.has_action_line,
+                                 command=self.show_action_lines)
         menubar.add_cascade(label='View', menu=viewmenu)
         self.config(menu=menubar)
 
@@ -445,6 +450,8 @@ class GearsApp(Tk):
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plots_frame)
         self.ax.plot([], [], color='b', linewidth=1)  # type: ignore[call-arg]
         self.ax.plot([], [], color='r', linewidth=1)  # type: ignore[call-arg]
+        self.ax.plot([], [], color='k', linewidth=1)  # type: ignore[call-arg]
+        self.ax.plot([], [], color='k', linewidth=1)  # type: ignore[call-arg]
         self.ax.set_xlim((0, 1))  # type: ignore[arg-type]
         self.ax.set_ylim((0, 1))  # type: ignore[arg-type]
         self.toolbar = ToolbarPlayer(self.canvas, self.plots_frame, self.play, self.next_frame, self.pause,
@@ -473,7 +480,43 @@ class GearsApp(Tk):
         self.plot_data(self.ax.lines[idx],  # type: ignore[attr-defined]
                        *(getattr(self, f'gear{idx}data') if flag else np.array([[], []])))
 
+    def show_action_lines(self) -> None:
+        # res = get_action_line(self.tooth0, self.tooth1)
+        # for pt in res:
+        #     self.ax.add_patch(Circle((pt[0] + self.tooth0.pitch_radius, pt[1]), 0.5, color='g', fill=False))
+
+        # print(res)
+        # circ0 = Circle((res[0] + self.tooth0.pitch_radius, res[1]), self.gear_sector0.ht0.pitch_radius * 0.01,
+        #                color='g', fill=False)
+        # circ1 = Circle((res[2] + self.tooth0.pitch_radius, res[3]), self.gear_sector0.ht0.pitch_radius * 0.01,
+        #                color='g', fill=False)
+        # circ2 = Circle((res[4] + self.tooth0.pitch_radius, res[5]), self.gear_sector0.ht0.pitch_radius * 0.01,
+        #                color='k', fill=False)
+        # circ3 = Circle((res[6] + self.tooth0.pitch_radius, res[7]), self.gear_sector0.ht0.pitch_radius * 0.01,
+        #                color='k', fill=False)
+        # circ4 = Circle((res[8] + self.tooth0.pitch_radius, res[9]), self.gear_sector0.ht0.pitch_radius * 0.01,
+        #                color='c', fill=False)
+        # circ5 = Circle((res[10] + self.tooth0.pitch_radius, res[11]), self.gear_sector0.ht0.pitch_radius * 0.01,
+        #                color='c', fill=False)
+        # circ6 = Circle((res[12] + self.tooth0.pitch_radius, res[13]), self.gear_sector0.ht0.pitch_radius * 0.01,
+        #                color='m', fill=False)
+        # circ7 = Circle((res[14] + self.tooth0.pitch_radius, res[15]), self.gear_sector0.ht0.pitch_radius * 0.01,
+        #                color='m', fill=False)
+        # self.ax.add_patch(circ0)  # type: ignore[attr-defined]
+        # self.ax.add_patch(circ1)  # type: ignore[attr-defined]
+        # self.ax.add_patch(circ2)  # type: ignore[attr-defined]
+        # self.ax.add_patch(circ3)  # type: ignore[attr-defined]
+        # self.ax.add_patch(circ4)  # type: ignore[attr-defined]
+        # self.ax.add_patch(circ5)  # type: ignore[attr-defined]
+        # self.ax.add_patch(circ6)  # type: ignore[attr-defined]
+        # self.ax.add_patch(circ7)  # type: ignore[attr-defined]
+
+        self.has_action_line.get()
+        self.plot_data(self.ax.lines[2],  # type: ignore[attr-defined]
+                       *(self.action_line0data if self.has_action_line.get() else np.array([[], []])))
+
     # Matplotlib funcs
+
     def on_key_press(self, event: KeyEvent) -> None:
         key_press_handler(event, self.canvas, self.toolbar)
 
@@ -501,6 +544,10 @@ class GearsApp(Tk):
                                 ad_coef=self.inputs.ad_coef1_val,
                                 de_coef=self.inputs.de_coef1_val,
                                 cutter_teeth_num=self.inputs.cutter_teeth_num1)
+
+        # pt0, = get_action_line(self.tooth0, self.tooth1)
+        self.action_line0data = get_action_line(self.tooth0, self.tooth1)
+        self.action_line0data[0] += self.tooth0.pitch_radius
 
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 

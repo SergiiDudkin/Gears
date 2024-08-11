@@ -8,8 +8,20 @@ STANDARD_DEDENDUM_COEF = 1.25
 
 
 class GearParams:
+    """Set of gear params."""
+
     def __init__(self, tooth_num: int, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
                  ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF) -> None:
+        """
+        Computes the missing gear params from the given ones.
+
+        Args:
+            tooth_num: Number of teeth
+            module: Gear module, mm.
+            pressure_angle: Pressure angle, rad.
+            ad_coef: Addendum coefficient, i.e. addendum / module.
+            de_coef: Dendum coefficient, i.e. dendum / module.
+        """
         self.tooth_num = tooth_num
         self.module = module
         self.pressure_angle = pressure_angle

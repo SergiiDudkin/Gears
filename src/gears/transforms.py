@@ -155,7 +155,17 @@ def stack_curves(*curves) -> npt.NDArray:
 
 
 def rotate(x: ArrOrNumG, y: ArrOrNumG, angle: float) -> npt.NDArray:
-    """Rotate points around the origin."""
+    """
+    Rotate points around the origin.
+
+    Args:
+        x: Radius-vector, x-value.
+        y: Radius-vector, y-value.
+        angle: Rotation angle, ACW, in radians.
+
+    Returns:
+        Rotated radius-vector.
+    """
     return np.array([x * np.cos(angle) - y * np.sin(angle), x * np.sin(angle) + y * np.cos(angle)])
 
 

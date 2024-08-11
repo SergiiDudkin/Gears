@@ -17,6 +17,7 @@ from .gear_params import GearParams
 from .gear_params import STANDARD_ADDENDUM_COEF
 from .gear_params import STANDARD_DEDENDUM_COEF
 from .gear_params import STANDARD_PRESSURE_ANGLE
+from .helpers import linecirc_intersec
 from .helpers import sci_round
 from .transforms import cartesian_to_polar
 from .transforms import equidistant
@@ -33,7 +34,11 @@ TOLERANCE = 0.1
 
 
 class HalfTooth(GearParams):
-    def __init__(self, tooth_num: int, module: float, cutter_teeth_num: float = float('inf'),
+    """Computation of half tooth profile using given parameters."""
+
+    min_r_cont: float  # Min radius where the involute-involute contact with the cutter takes place
+
+    def __init__(self, tooth_num: int, module: float, cutter_teeth_num: int = 0,
                  pressure_angle: float = STANDARD_PRESSURE_ANGLE, ad_coef: float = STANDARD_ADDENDUM_COEF,
                  de_coef: float = STANDARD_DEDENDUM_COEF, step: float = STEP, tolerance: float = TOLERANCE,
                  profile_shift_coef: float = 0) -> None:
@@ -91,12 +96,12 @@ class HalfTooth(GearParams):
         invol_epitr_rad, invol_epitr_angle = self._calc_invol_epitr_flat() if self.is_rack else self._calc_invol_epitr()
         self.is_tooth_undercut = invol_epitr_angle * 2 < np.pi
         if self.is_tooth_undercut:
-            involute_t_min, epitrochoid_t_max, r_curr = self._find_involute_epitrochoid_intersection()
-            # ToDo: Use r_curr or delete
+            involute_t_min, epitrochoid_t_max, self.min_r_cont = self._find_involute_epitrochoid_intersection()
         else:
             involute_t_min, epitrochoid_t_max = self._find_involute_epitrochoid_contact(invol_epitr_rad)
+            self.min_r_cont = invol_epitr_rad
 
-        # Gather limits of curves
+            # Gather limits of curves
         self.involute_lims = (involute_t_min, t_outside)
         self.epitrochoid_lims = (0, epitrochoid_t_max)
         self.outside_circle_lims = (ang_outside - ang_pitch, self.quater_angle)
@@ -348,3 +353,44 @@ class GearSector:
             if is_within_ang(i * np.pi / 2, self.sec_st, self.sec_en):
                 xy_lims = upd_xy_lims(x * self.ht0.outside_radius, y * self.ht0.outside_radius, *xy_lims)
         return xy_lims
+
+
+# def get_action_line(tooth0: HalfTooth, tooth1: HalfTooth):
+#     # tooth0.pitch_radius
+#     print(f'outside_radius {tooth0.outside_radius}, min_r_cont {tooth0.min_r_cont}')
+#     prv_x, prv_y = rotate(0, 1, tooth0.pressure_angle)
+#     res0 = linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=-tooth0.pitch_radius, cntr_y=0,
+#                              radlen=tooth0.outside_radius)
+#     res1 = linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=-tooth0.pitch_radius, cntr_y=0,
+#                              radlen=tooth0.min_r_cont)
+#     res2 = linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=tooth1.pitch_radius, cntr_y=0,
+#                              radlen=tooth1.outside_radius)
+#     res3 = linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=tooth1.pitch_radius, cntr_y=0,
+#                              radlen=tooth1.min_r_cont)
+#     # print(res1)
+#     return res0 + res1 + res2 + res3
+
+
+def get_action_line(tooth0: HalfTooth, tooth1: HalfTooth):
+    prv_x, prv_y = rotate(0, 1, tooth0.pressure_angle)
+    res = []
+    for tooth, sign in zip([tooth0, tooth1], [-1, 1]):
+        for attr in ['outside_radius', 'min_r_cont']:
+            res += linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=tooth.pitch_radius * sign, cntr_y=0,
+                                     radlen=getattr(tooth, attr))
+    # return res
+    res_arr = np.array(res).reshape(int(len(res) / 2), 2)
+    y_es = res_arr[:, 1]
+    # print(np.nonzero(y_es >= 0)[0])
+    # print(np.nonzero(y_es <= 0)[0])
+    pos_y_pts = res_arr[np.nonzero(y_es >= 0)[0]]
+    neg_y_pts = res_arr[np.nonzero(y_es <= 0)[0]]
+    pos_y = pos_y_pts[:, 1]
+    neg_y = neg_y_pts[:, 1]
+    min_pos = pos_y_pts[np.argmin(pos_y)]
+    max_neg = neg_y_pts[np.argmax(neg_y)]
+    # print(f'min_pos {min_pos}')
+    # print(f'max_neg {max_neg}')
+    action_line_data = np.transpose(np.vstack((min_pos, max_neg)))
+
+    return action_line_data
