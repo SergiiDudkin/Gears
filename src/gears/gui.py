@@ -481,42 +481,11 @@ class GearsApp(Tk):
                        *(getattr(self, f'gear{idx}data') if flag else np.array([[], []])))
 
     def show_action_lines(self) -> None:
-        # res = get_action_line(self.tooth0, self.tooth1)
-        # for pt in res:
-        #     self.ax.add_patch(Circle((pt[0] + self.tooth0.pitch_radius, pt[1]), 0.5, color='g', fill=False))
-
-        # print(res)
-        # circ0 = Circle((res[0] + self.tooth0.pitch_radius, res[1]), self.gear_sector0.ht0.pitch_radius * 0.01,
-        #                color='g', fill=False)
-        # circ1 = Circle((res[2] + self.tooth0.pitch_radius, res[3]), self.gear_sector0.ht0.pitch_radius * 0.01,
-        #                color='g', fill=False)
-        # circ2 = Circle((res[4] + self.tooth0.pitch_radius, res[5]), self.gear_sector0.ht0.pitch_radius * 0.01,
-        #                color='k', fill=False)
-        # circ3 = Circle((res[6] + self.tooth0.pitch_radius, res[7]), self.gear_sector0.ht0.pitch_radius * 0.01,
-        #                color='k', fill=False)
-        # circ4 = Circle((res[8] + self.tooth0.pitch_radius, res[9]), self.gear_sector0.ht0.pitch_radius * 0.01,
-        #                color='c', fill=False)
-        # circ5 = Circle((res[10] + self.tooth0.pitch_radius, res[11]), self.gear_sector0.ht0.pitch_radius * 0.01,
-        #                color='c', fill=False)
-        # circ6 = Circle((res[12] + self.tooth0.pitch_radius, res[13]), self.gear_sector0.ht0.pitch_radius * 0.01,
-        #                color='m', fill=False)
-        # circ7 = Circle((res[14] + self.tooth0.pitch_radius, res[15]), self.gear_sector0.ht0.pitch_radius * 0.01,
-        #                color='m', fill=False)
-        # self.ax.add_patch(circ0)  # type: ignore[attr-defined]
-        # self.ax.add_patch(circ1)  # type: ignore[attr-defined]
-        # self.ax.add_patch(circ2)  # type: ignore[attr-defined]
-        # self.ax.add_patch(circ3)  # type: ignore[attr-defined]
-        # self.ax.add_patch(circ4)  # type: ignore[attr-defined]
-        # self.ax.add_patch(circ5)  # type: ignore[attr-defined]
-        # self.ax.add_patch(circ6)  # type: ignore[attr-defined]
-        # self.ax.add_patch(circ7)  # type: ignore[attr-defined]
-
         self.has_action_line.get()
         self.plot_data(self.ax.lines[2],  # type: ignore[attr-defined]
                        *(self.action_line0data if self.has_action_line.get() else np.array([[], []])))
 
     # Matplotlib funcs
-
     def on_key_press(self, event: KeyEvent) -> None:
         key_press_handler(event, self.canvas, self.toolbar)
 
@@ -545,31 +514,30 @@ class GearsApp(Tk):
                                 de_coef=self.inputs.de_coef1_val,
                                 cutter_teeth_num=self.inputs.cutter_teeth_num1)
 
-        # pt0, = get_action_line(self.tooth0, self.tooth1)
         self.action_line0data = get_action_line(self.tooth0, self.tooth1)
-        self.action_line0data[0] += self.tooth0.pitch_radius
 
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
         self.gear_sector0 = GearSector(self.tooth0, self.tooth0, step_cnt=100, sector=(np.pi * 1.5, np.pi * 0.5),
                                        rot_ang=0, is_acw=False)
         self.rotating_gear_sector0 = iter(self.gear_sector0)
-        ctr_circ = Circle((0, 0), self.gear_sector0.ht0.pitch_radius * 0.01, color='b')
+        ctr_circ = Circle((-self.tooth0.pitch_radius, 0), self.gear_sector0.ht0.pitch_radius * 0.01, color='b')
         self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
-        xy_lims = merge_xy_lims(*xy_lims, *self.gear_sector0.get_limits())
-        xy_lims = upd_xy_lims(0, 0, *xy_lims)
+        xy_lims_ = self.gear_sector0.get_limits()
+        xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] - self.tooth0.pitch_radius, xy_lims_[1],
+                                xy_lims_[2] - self.tooth0.pitch_radius, xy_lims_[3])
 
         self.gear_sector1 = GearSector(self.tooth1, self.tooth1, step_cnt=100, sector=(np.pi * 0.5, np.pi * 1.5),
                                        rot_ang=np.pi, is_acw=True)
         self.rotating_gear_sector1 = iter(self.gear_sector1)
         self.ctr_dist = self.gear_sector0.ht0.pitch_radius + self.gear_sector1.ht0.pitch_radius
-        ctr_circ = Circle((self.ctr_dist, 0), self.gear_sector1.ht0.pitch_radius * 0.01, color='r')
+        ctr_circ = Circle((self.tooth1.pitch_radius, 0), self.gear_sector1.ht0.pitch_radius * 0.01, color='r')
         self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
         xy_lims_ = self.gear_sector1.get_limits()
-        xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + self.ctr_dist, xy_lims_[1], xy_lims_[2] + self.ctr_dist,
-                                xy_lims_[3])
-        xy_lims = upd_xy_lims(self.ctr_dist, 0, *xy_lims)
+        xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + self.tooth1.pitch_radius, xy_lims_[1],
+                                xy_lims_[2] + self.tooth1.pitch_radius, xy_lims_[3])
 
+        xy_lims = upd_xy_lims(-self.tooth0.pitch_radius, self.tooth1.pitch_radius, *xy_lims)
         min_x, min_y, max_x, max_y = xy_lims
         margin = max(max_x - min_x, max_y - min_y) * 0.05
         self.ax.set_xlim((min_x - margin, max_x + margin))  # type: ignore[arg-type]
@@ -601,9 +569,10 @@ class GearsApp(Tk):
 
     # Helpers
     def show_next_frame(self) -> None:
-        self.gear0data = next(self.rotating_gear_sector0)
+        x_es, y_es = next(self.rotating_gear_sector0)
+        self.gear0data = np.vstack((x_es - self.tooth0.pitch_radius, y_es))
         x_es, y_es = next(self.rotating_gear_sector1)
-        self.gear1data = np.vstack((x_es + self.ctr_dist, y_es))
+        self.gear1data = np.vstack((x_es + self.tooth1.pitch_radius, y_es))
         for i in range(2):
             self.show_gear(i)
         self.toolbar.upd_frame_num(self.gear_sector0.i)

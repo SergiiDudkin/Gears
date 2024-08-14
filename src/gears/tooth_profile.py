@@ -355,22 +355,6 @@ class GearSector:
         return xy_lims
 
 
-# def get_action_line(tooth0: HalfTooth, tooth1: HalfTooth):
-#     # tooth0.pitch_radius
-#     print(f'outside_radius {tooth0.outside_radius}, min_r_cont {tooth0.min_r_cont}')
-#     prv_x, prv_y = rotate(0, 1, tooth0.pressure_angle)
-#     res0 = linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=-tooth0.pitch_radius, cntr_y=0,
-#                              radlen=tooth0.outside_radius)
-#     res1 = linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=-tooth0.pitch_radius, cntr_y=0,
-#                              radlen=tooth0.min_r_cont)
-#     res2 = linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=tooth1.pitch_radius, cntr_y=0,
-#                              radlen=tooth1.outside_radius)
-#     res3 = linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=tooth1.pitch_radius, cntr_y=0,
-#                              radlen=tooth1.min_r_cont)
-#     # print(res1)
-#     return res0 + res1 + res2 + res3
-
-
 def get_action_line(tooth0: HalfTooth, tooth1: HalfTooth):
     prv_x, prv_y = rotate(0, 1, tooth0.pressure_angle)
     res = []
@@ -378,19 +362,13 @@ def get_action_line(tooth0: HalfTooth, tooth1: HalfTooth):
         for attr in ['outside_radius', 'min_r_cont']:
             res += linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=tooth.pitch_radius * sign, cntr_y=0,
                                      radlen=getattr(tooth, attr))
-    # return res
     res_arr = np.array(res).reshape(int(len(res) / 2), 2)
     y_es = res_arr[:, 1]
-    # print(np.nonzero(y_es >= 0)[0])
-    # print(np.nonzero(y_es <= 0)[0])
     pos_y_pts = res_arr[np.nonzero(y_es >= 0)[0]]
     neg_y_pts = res_arr[np.nonzero(y_es <= 0)[0]]
     pos_y = pos_y_pts[:, 1]
     neg_y = neg_y_pts[:, 1]
     min_pos = pos_y_pts[np.argmin(pos_y)]
     max_neg = neg_y_pts[np.argmax(neg_y)]
-    # print(f'min_pos {min_pos}')
-    # print(f'max_neg {max_neg}')
     action_line_data = np.transpose(np.vstack((min_pos, max_neg)))
-
     return action_line_data
