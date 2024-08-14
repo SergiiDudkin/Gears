@@ -230,6 +230,7 @@ class HalfTooth(GearParams):
 
     def __str__(self) -> str:
         output = super().__str__()
+        output += f'\ntooth undercut: {self.is_tooth_undercut}'
         curves_data = self.get_curves_data()
         for curve_name in ('involute', 'epitrochoid', 'outside circle', 'root circle'):
             curve = curves_data[curve_name]
