@@ -490,6 +490,12 @@ class GearsApp(Tk):
                        *(getattr(self, f'gear{idx}data') if flag else np.array([[], []])))
 
     def show_action_lines(self) -> None:
+        """
+        Show or hide the action line depending on the corresponding checkbox variable.
+
+        Returns:
+            None.
+        """
         self.has_action_line.get()
         self.plot_data(self.ax.lines[2],  # type: ignore[attr-defined]
                        *(self.action_line0data if self.has_action_line.get() else np.array([[], []])))

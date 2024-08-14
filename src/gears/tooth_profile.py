@@ -108,9 +108,9 @@ class HalfTooth(GearParams):
         self.root_circle_lims = (-self.quater_angle, -epitrochoid_shift_ang)
 
     def _calc_shift_ang(self, radial_shift: float) -> float:
-        circular_pitch = self.module * np.pi
         proj_onto_rack = radial_shift * np.tan(self.pressure_angle)
-        return self.tooth_angle * proj_onto_rack / circular_pitch  # Shift angle
+        self.shift_percent = proj_onto_rack / self.circular_pitch
+        return self.tooth_angle * self.shift_percent  # Shift angle
 
     def _calc_epitrochoid_flat_shift_ang(self) -> float:
         return self._calc_shift_ang(self.dedendum)
