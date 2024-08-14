@@ -34,6 +34,7 @@ from tkinter import X
 from tkinter import Y
 from typing import Callable
 from typing import cast
+from typing import Iterator
 from typing import Optional
 
 import numpy as np
@@ -384,6 +385,13 @@ class InputFrame(Frame):
 class GearsApp(Tk):
     """Gears app with GUI"""
 
+    tooth0: HalfTooth
+    tooth1: HalfTooth
+    gear_sector0: GearSector
+    gear_sector1: GearSector
+    rotating_gear_sector0: Iterator[npt.NDArray]  # Rotating gear_sector0
+    rotating_gear_sector1: Iterator[npt.NDArray]  # Rotating gear_sector1
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -460,6 +468,7 @@ class GearsApp(Tk):
         self.canvas.mpl_connect("key_press_event", self.on_key_press)
         self.gear0data: npt.NDArray = np.array([[], []])
         self.gear1data: npt.NDArray = np.array([[], []])
+        self.action_line0data: npt.NDArray = np.array([[], []])
 
         self.inputs.input_callback()
         self.delay_ms = 1
@@ -500,48 +509,35 @@ class GearsApp(Tk):
     def play(self, event: Optional[KeyEvent] = None) -> None:
         self.break_loop()
         self.toolbar.play_state()
-
-        self.tooth0 = HalfTooth(tooth_num=self.inputs.tooth_num0_val,
-                                module=self.inputs.module_val,
-                                pressure_angle=self.inputs.pressure_angle_val,
-                                ad_coef=self.inputs.ad_coef0_val,
-                                de_coef=self.inputs.de_coef0_val,
-                                cutter_teeth_num=self.inputs.cutter_teeth_num0)
-        self.tooth1 = HalfTooth(tooth_num=self.inputs.tooth_num1_val,
-                                module=self.inputs.module_val,
-                                pressure_angle=self.inputs.pressure_angle_val,
-                                ad_coef=self.inputs.ad_coef1_val,
-                                de_coef=self.inputs.de_coef1_val,
-                                cutter_teeth_num=self.inputs.cutter_teeth_num1)
-
-        self.action_line0data = get_action_line(self.tooth0, self.tooth1)
-
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
-        self.gear_sector0 = GearSector(self.tooth0, self.tooth0, step_cnt=100, sector=(np.pi * 1.5, np.pi * 0.5),
-                                       rot_ang=0, is_acw=False)
-        self.rotating_gear_sector0 = iter(self.gear_sector0)
-        ctr_circ = Circle((-self.tooth0.pitch_radius, 0), self.gear_sector0.ht0.pitch_radius * 0.01, color='b')
-        self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
-        xy_lims_ = self.gear_sector0.get_limits()
-        xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] - self.tooth0.pitch_radius, xy_lims_[1],
-                                xy_lims_[2] - self.tooth0.pitch_radius, xy_lims_[3])
-
-        self.gear_sector1 = GearSector(self.tooth1, self.tooth1, step_cnt=100, sector=(np.pi * 0.5, np.pi * 1.5),
-                                       rot_ang=np.pi, is_acw=True)
-        self.rotating_gear_sector1 = iter(self.gear_sector1)
-        self.ctr_dist = self.gear_sector0.ht0.pitch_radius + self.gear_sector1.ht0.pitch_radius
-        ctr_circ = Circle((self.tooth1.pitch_radius, 0), self.gear_sector1.ht0.pitch_radius * 0.01, color='r')
-        self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
-        xy_lims_ = self.gear_sector1.get_limits()
-        xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + self.tooth1.pitch_radius, xy_lims_[1],
-                                xy_lims_[2] + self.tooth1.pitch_radius, xy_lims_[3])
+        for i, (is_acw, sector, rot_ang, color, ctr_x_factor) in enumerate([
+            (False, (np.pi * 1.5, np.pi * 0.5), 0, 'b', -1),
+            (True, (np.pi * 0.5, np.pi * 1.5), np.pi, 'r', 1)
+        ]):
+            tooth = HalfTooth(tooth_num=getattr(self.inputs, f'tooth_num{i}_val'),
+                              module=self.inputs.module_val,
+                              pressure_angle=self.inputs.pressure_angle_val,
+                              ad_coef=getattr(self.inputs, f'ad_coef{i}_val'),
+                              de_coef=getattr(self.inputs, f'de_coef{i}_val'),
+                              cutter_teeth_num=getattr(self.inputs, f'cutter_teeth_num{i}'))
+            gear_sector = GearSector(tooth, tooth, step_cnt=100, sector=sector, rot_ang=rot_ang, is_acw=is_acw)
+            ctr_x = tooth.pitch_radius * ctr_x_factor
+            ctr_circ = Circle((ctr_x, 0), gear_sector.ht0.pitch_radius * 0.01, color=color)
+            self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
+            xy_lims_ = gear_sector.get_limits()
+            xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + ctr_x, xy_lims_[1], xy_lims_[2] + ctr_x, xy_lims_[3])
+            setattr(self, f'tooth{i}', tooth)
+            setattr(self, f'gear_sector{i}', gear_sector)
+            setattr(self, f'rotating_gear_sector{i}', iter(gear_sector))
 
         xy_lims = upd_xy_lims(-self.tooth0.pitch_radius, self.tooth1.pitch_radius, *xy_lims)
         min_x, min_y, max_x, max_y = xy_lims
         margin = max(max_x - min_x, max_y - min_y) * 0.05
         self.ax.set_xlim((min_x - margin, max_x + margin))  # type: ignore[arg-type]
         self.ax.set_ylim((min_y - margin, max_y + margin))  # type: ignore[arg-type]
+
+        self.action_line0data = get_action_line(self.tooth0, self.tooth1)
 
         self.text_msg(
             'Gear A parameters\n\n'
@@ -550,6 +546,7 @@ class GearsApp(Tk):
             f'{indentate(str(self.tooth1))}'
         )
         self.show_next_frame()
+        self.show_action_lines()
 
     def next_frame(self) -> None:
         self.show_next_frame()

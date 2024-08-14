@@ -355,9 +355,9 @@ class GearSector:
         return xy_lims
 
 
-def get_action_line(tooth0: HalfTooth, tooth1: HalfTooth):
+def get_action_line(tooth0: HalfTooth, tooth1: HalfTooth) -> npt.NDArray:
     prv_x, prv_y = rotate(0, 1, tooth0.pressure_angle)
-    res = []
+    res: list[float] = []
     for tooth, sign in zip([tooth0, tooth1], [-1, 1]):
         for attr in ['outside_radius', 'min_r_cont']:
             res += linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=tooth.pitch_radius * sign, cntr_y=0,
