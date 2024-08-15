@@ -2,6 +2,7 @@ import re
 from numbers import Number
 
 import numpy as np
+import numpy.typing as npt
 
 
 def sci_round(num: Number, sig_fig: int = 1) -> float:
@@ -51,3 +52,23 @@ def linecirc_intersec(x1: float, y1: float, x2: float, y2: float, cntr_x: float,
         return x3, y3
     else:
         raise RuntimeError('No line-circumference intersection!')
+
+
+def seedrange(st: float, en: float, seed: float, step: float) -> npt.NDArray:
+    """
+    Generates a range within st and en (both including), where the seed matches the infinite sequence.
+
+    Args:
+        st: Start, including.
+        en: End, including.
+        seed: The mandatory point of sequence.
+        step: Difference between adjacent points
+
+    Returns:
+        Range with the given parameters.
+    """
+    st_ = (seed - st) % step + st
+    res = np.arange(st_, en + 0.5 * step, step, dtype=np.float_)
+    if res.size and res[-1] > en:
+        res = res[:-1]
+    return res

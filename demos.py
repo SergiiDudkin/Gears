@@ -2,13 +2,19 @@ import numpy as np
 
 from src.gears import angle_vec
 from src.gears import rotate
+from src.gears import seedrange
 
+
+# print(seedrange(-23.4, 67.5, 54.7, 3))
+print(seedrange(2.1, 2.5, 2.6, 2))
+# res = seedrange(23.5, 79.1, 53.4, 4.7)
+# print(res[np.argmin(np.abs(res - 53.5))])
 
 # angle = angle_vec(np.array([1, 0]), np.array([-1, 0])) / np.pi
 # print(angle)
 
-vec = rotate(1, 0, np.pi / 2)
-print(vec)
+# vec = rotate(1, 0, np.pi / 2)
+# print(vec)
 
 
 # import numpy as np
