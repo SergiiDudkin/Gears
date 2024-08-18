@@ -99,7 +99,7 @@ def make_angrad_func(func: Callable) -> Callable:
             else:
                 t_max = t_curr
         else:
-            print('WARNING! Number of iteration exceeded the limit.')
+            print('WARNING! angrad_func: Number of iteration exceeded the limit.')
 
         ang = np.arctan2(y, x)  # Compute angle
         return ang, x, y, t_curr
@@ -144,7 +144,7 @@ def equidistant(func: Callable, t_lims: tuple[float, float], step: float, tolera
         dist_range = np.arange(dist_step, total_dist, dist_step)[:seg_num - 1]
         t_range = np.concatenate(([t_st], dist_t_interp_func(dist_range), [t_en]))
     else:
-        print('WARNING! Number of iteration exceeded the limit.')
+        print('WARNING! equidistant: Number of iteration exceeded the limit.')
 
     return points
 

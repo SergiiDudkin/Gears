@@ -50,6 +50,7 @@ from matplotlib.pyplot import Circle  # type: ignore[attr-defined]
 from .helpers import indentate
 from .tooth_profile import GearSector
 from .tooth_profile import get_action_line
+from .tooth_profile import get_contact_points
 from .tooth_profile import HalfTooth
 from .transforms import merge_xy_lims
 from .transforms import upd_xy_lims
@@ -406,12 +407,15 @@ class GearsApp(Tk):
         self.has_gear0 = BooleanVar(self, True)  # Menu checkbutton variable
         self.has_gear1 = BooleanVar(self, True)  # Menu checkbutton variable
         self.has_action_line = BooleanVar(self, False)  # Menu checkbutton variable
+        self.has_contact_pts = BooleanVar(self, False)  # Menu checkbutton variable
         viewmenu.add_checkbutton(label='Gear A', onvalue=True, offvalue=False, variable=self.has_gear0,
                                  command=lambda: self.show_gear(0))
         viewmenu.add_checkbutton(label='Gear B', onvalue=True, offvalue=False, variable=self.has_gear1,
                                  command=lambda: self.show_gear(1))
         viewmenu.add_checkbutton(label='Action line', onvalue=True, offvalue=False, variable=self.has_action_line,
                                  command=self.show_action_lines)
+        viewmenu.add_checkbutton(label='Contact points', onvalue=True, offvalue=False, variable=self.has_contact_pts,
+                                 command=self.show_contact_points)
         menubar.add_cascade(label='View', menu=viewmenu)
         self.config(menu=menubar)
 
@@ -460,6 +464,8 @@ class GearsApp(Tk):
         self.ax.plot([], [], color='r', linewidth=1)  # type: ignore[call-arg]
         self.ax.plot([], [], color='k', linewidth=1)  # type: ignore[call-arg]
         self.ax.plot([], [], color='k', linewidth=1)  # type: ignore[call-arg]
+        self.ax.plot([], [], marker='o', markersize=5, mec='g', mfc=(1, 1, 1, 0),
+                     linestyle=None)  # type: ignore[call-arg, arg-type]
         self.ax.set_xlim((0, 1))  # type: ignore[arg-type]
         self.ax.set_ylim((0, 1))  # type: ignore[arg-type]
         self.toolbar = ToolbarPlayer(self.canvas, self.plots_frame, self.play, self.next_frame, self.pause,
@@ -469,6 +475,7 @@ class GearsApp(Tk):
         self.gear0data: npt.NDArray = np.array([[], []])
         self.gear1data: npt.NDArray = np.array([[], []])
         self.action_line0data: npt.NDArray = np.array([[], []])
+        self.contacts0_data: npt.NDArray = np.array([[], []])
 
         self.inputs.input_callback()
         self.delay_ms = 1
@@ -496,9 +503,18 @@ class GearsApp(Tk):
         Returns:
             None.
         """
-        self.has_action_line.get()
         self.plot_data(self.ax.lines[2],  # type: ignore[attr-defined]
                        *(self.action_line0data if self.has_action_line.get() else np.array([[], []])))
+
+    def show_contact_points(self) -> None:
+        """
+        Show or hide the contact points depending on the corresponding checkbox variable.
+
+        Returns:
+            None.
+        """
+        self.plot_data(self.ax.lines[4],  # type: ignore[attr-defined]
+                       *(self.contacts0_data if self.has_contact_pts.get() else np.array([[], []])))
 
     # Matplotlib funcs
     def on_key_press(self, event: KeyEvent) -> None:
@@ -526,7 +542,8 @@ class GearsApp(Tk):
                               pressure_angle=self.inputs.pressure_angle_val,
                               ad_coef=getattr(self.inputs, f'ad_coef{i}_val'),
                               de_coef=getattr(self.inputs, f'de_coef{i}_val'),
-                              cutter_teeth_num=getattr(self.inputs, f'cutter_teeth_num{i}'))
+                              cutter_teeth_num=getattr(self.inputs, f'cutter_teeth_num{i}'),
+                              profile_shift_coef=self.inputs.profile_shift_coef_val * ctr_x_factor)
             gear_sector = GearSector(tooth, tooth, step_cnt=100, sector=sector, rot_ang=rot_ang, is_acw=is_acw)
             ctr_x = tooth.pitch_radius * ctr_x_factor
             ctr_circ = Circle((ctr_x, 0), gear_sector.ht0.pitch_radius * 0.01, color=color)
@@ -578,7 +595,11 @@ class GearsApp(Tk):
         self.gear1data = np.vstack((x_es + self.tooth1.pitch_radius, y_es))
         for i in range(2):
             self.show_gear(i)
+        base_step = self.tooth0.base_diameter * np.pi / self.tooth0.tooth_num
+        self.contacts0_data = get_contact_points(self.action_line0data, base_step, self.gear_sector0.i / 100 -
+                                                 self.tooth0.shift_percent)
         self.toolbar.upd_frame_num(self.gear_sector0.i)
+        self.show_contact_points()
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
 
     def break_loop(self) -> None:

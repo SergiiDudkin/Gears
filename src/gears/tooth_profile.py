@@ -17,8 +17,10 @@ from .gear_params import GearParams
 from .gear_params import STANDARD_ADDENDUM_COEF
 from .gear_params import STANDARD_DEDENDUM_COEF
 from .gear_params import STANDARD_PRESSURE_ANGLE
+from .helpers import get_unit_vector
 from .helpers import linecirc_intersec
 from .helpers import sci_round
+from .helpers import seedrange
 from .transforms import cartesian_to_polar
 from .transforms import equidistant
 from .transforms import is_within_ang
@@ -69,7 +71,6 @@ class HalfTooth(GearParams):
         profile_ang_shift = self._calc_shift_ang(self.profile_shift_coef * self.module)
         epitrochoid_shift_ang -= profile_ang_shift
         ang_pitch -= profile_ang_shift
-        ang_outside -= profile_ang_shift
 
         # Gather params of curves
         self.involute_params = {
@@ -372,4 +373,15 @@ def get_action_line(tooth0: HalfTooth, tooth1: HalfTooth) -> npt.NDArray:
     min_pos = pos_y_pts[np.argmin(pos_y)]
     max_neg = neg_y_pts[np.argmax(neg_y)]
     action_line_data = np.transpose(np.vstack((min_pos, max_neg)))
-    return action_line_data
+    return action_line_data  # [[x0, x1], [y0, y1]]
+
+
+def get_contact_points(action_line_data: npt.NDArray, base_step: float, progress: float) -> npt.NDArray:
+    pt0, pt1 = action_line_data[:, 0], action_line_data[:, 1]
+    uv = get_unit_vector(pt1 - pt0)
+    st = -np.linalg.norm(pt0)  # type: ignore[attr-defined]
+    en = np.linalg.norm(pt1)  # type: ignore[attr-defined]
+    pt_range = seedrange(st, en, base_step * progress, base_step)
+    x_es = pt_range * uv[0]
+    y_es = pt_range * uv[1]
+    return np.array([x_es, y_es])

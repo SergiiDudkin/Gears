@@ -61,8 +61,8 @@ def seedrange(st: float, en: float, seed: float, step: float) -> npt.NDArray:
     Args:
         st: Start, including.
         en: End, including.
-        seed: The mandatory point of sequence.
-        step: Difference between adjacent points
+        seed: The mandatory value of sequence.
+        step: Difference between adjacent values.
 
     Returns:
         Range with the given parameters.
@@ -72,3 +72,7 @@ def seedrange(st: float, en: float, seed: float, step: float) -> npt.NDArray:
     if res.size and res[-1] > en:
         res = res[:-1]
     return res
+
+
+def get_unit_vector(vec: npt.NDArray) -> npt.NDArray:
+    return vec / np.linalg.norm(vec)  # type: ignore[attr-defined]
