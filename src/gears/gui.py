@@ -465,7 +465,9 @@ class GearsApp(Tk):
         self.ax.plot([], [], color='k', linewidth=1)  # type: ignore[call-arg]
         self.ax.plot([], [], color='k', linewidth=1)  # type: ignore[call-arg]
         self.ax.plot([], [], marker='o', markersize=5, mec='g', mfc=(1, 1, 1, 0),
-                     linestyle=None)  # type: ignore[call-arg, arg-type]
+                     linestyle='None')  # type: ignore[call-arg, arg-type]
+        self.ax.plot([], [], marker='o', markersize=5, mec='m', mfc=(1, 1, 1, 0),
+                     linestyle='None')  # type: ignore[call-arg, arg-type]
         self.ax.set_xlim((0, 1))  # type: ignore[arg-type]
         self.ax.set_ylim((0, 1))  # type: ignore[arg-type]
         self.toolbar = ToolbarPlayer(self.canvas, self.plots_frame, self.play, self.next_frame, self.pause,
@@ -475,7 +477,9 @@ class GearsApp(Tk):
         self.gear0data: npt.NDArray = np.array([[], []])
         self.gear1data: npt.NDArray = np.array([[], []])
         self.action_line0data: npt.NDArray = np.array([[], []])
+        self.action_line1data: npt.NDArray = np.array([[], []])
         self.contacts0_data: npt.NDArray = np.array([[], []])
+        self.contacts1_data: npt.NDArray = np.array([[], []])
 
         self.inputs.input_callback()
         self.delay_ms = 1
@@ -505,6 +509,8 @@ class GearsApp(Tk):
         """
         self.plot_data(self.ax.lines[2],  # type: ignore[attr-defined]
                        *(self.action_line0data if self.has_action_line.get() else np.array([[], []])))
+        self.plot_data(self.ax.lines[3],  # type: ignore[attr-defined]
+                       *(self.action_line1data if self.has_action_line.get() else np.array([[], []])))
 
     def show_contact_points(self) -> None:
         """
@@ -515,6 +521,8 @@ class GearsApp(Tk):
         """
         self.plot_data(self.ax.lines[4],  # type: ignore[attr-defined]
                        *(self.contacts0_data if self.has_contact_pts.get() else np.array([[], []])))
+        self.plot_data(self.ax.lines[5],  # type: ignore[attr-defined]
+                       *(self.contacts1_data if self.has_contact_pts.get() else np.array([[], []])))
 
     # Matplotlib funcs
     def on_key_press(self, event: KeyEvent) -> None:
@@ -561,6 +569,8 @@ class GearsApp(Tk):
         self.ax.set_ylim((min_y - margin, max_y + margin))  # type: ignore[arg-type]
 
         self.action_line0data = get_action_line(self.tooth0, self.tooth1)
+        self.action_line1data = np.array([[self.action_line0data[0][1], self.action_line0data[0][0]],
+                                          [-self.action_line0data[1][1], -self.action_line0data[1][0]]])
 
         self.text_msg(
             'Gear A parameters\n\n'
@@ -598,6 +608,8 @@ class GearsApp(Tk):
         base_step = self.tooth0.base_diameter * np.pi / self.tooth0.tooth_num
         self.contacts0_data = get_contact_points(self.action_line0data, base_step, self.gear_sector0.i / 100 -
                                                  self.tooth0.shift_percent)
+        self.contacts1_data = get_contact_points(self.action_line1data, base_step, self.gear_sector0.i / 100 -
+                                                 self.tooth1.shift_percent + 0.5)
         self.toolbar.upd_frame_num(self.gear_sector0.i)
         self.show_contact_points()
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
