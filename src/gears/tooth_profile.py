@@ -231,7 +231,7 @@ class HalfTooth(GearParams):
 
     def __str__(self) -> str:
         output = super().__str__()
-        output += f'\ntooth undercut: {self.is_tooth_undercut}'
+        output += f'\ntooth undercut = {self.is_tooth_undercut}'
         curves_data = self.get_curves_data()
         for curve_name in ('involute', 'epitrochoid', 'outside circle', 'root circle'):
             curve = curves_data[curve_name]
@@ -357,31 +357,54 @@ class GearSector:
         return xy_lims
 
 
-def get_action_line(tooth0: HalfTooth, tooth1: HalfTooth) -> npt.NDArray:
-    prv_x, prv_y = rotate(0, 1, tooth0.pressure_angle)
-    res: list[float] = []
-    for tooth, sign in zip([tooth0, tooth1], [-1, 1]):
-        for attr in ['outside_radius', 'min_r_cont']:
-            res += linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=tooth.pitch_radius * sign, cntr_y=0,
-                                     radlen=getattr(tooth, attr))
-    res_arr = np.array(res).reshape(int(len(res) / 2), 2)
-    y_es = res_arr[:, 1]
-    pos_y_pts = res_arr[np.nonzero(y_es >= 0)[0]]
-    neg_y_pts = res_arr[np.nonzero(y_es <= 0)[0]]
-    pos_y = pos_y_pts[:, 1]
-    neg_y = neg_y_pts[:, 1]
-    min_pos = pos_y_pts[np.argmin(pos_y)]
-    max_neg = neg_y_pts[np.argmax(neg_y)]
-    action_line_data = np.transpose(np.vstack((min_pos, max_neg)))
-    return action_line_data  # [[x0, x1], [y0, y1]]
+class Transmission:
+    def __init__(self, tooth0: HalfTooth, tooth1: HalfTooth, step_cnt: int) -> None:
+        self.tooth0 = tooth0
+        self.tooth1 = tooth1
+        self.step_cnt = step_cnt
+        self.i = self.step_cnt - 1
+        self.action_line0data = self.get_action_line()
+        self.action_line1data = np.array([[self.action_line0data[0][1], self.action_line0data[0][0]],
+                                          [-self.action_line0data[1][1], -self.action_line0data[1][0]]])
+        self.base_step = self.tooth0.base_diameter * np.pi / self.tooth0.tooth_num
+        self.ave_contact_points = np.linalg.norm(self.action_line0data[:, 1] -  # type: ignore[attr-defined]
+                                                 self.action_line0data[:, 0]) / self.base_step
 
+    def get_action_line(self) -> npt.NDArray:
+        prv_x, prv_y = rotate(0, 1, self.tooth0.pressure_angle)
+        res: list[float] = []
+        for tooth, sign in zip([self.tooth0, self.tooth1], [-1, 1]):
+            for attr in ['outside_radius', 'min_r_cont']:
+                res += linecirc_intersec(x1=0, y1=0, x2=prv_x, y2=prv_y, cntr_x=tooth.pitch_radius * sign, cntr_y=0,
+                                         radlen=getattr(tooth, attr))
+        res_arr = np.array(res).reshape(int(len(res) / 2), 2)
+        y_es = res_arr[:, 1]
+        pos_y_pts = res_arr[np.nonzero(y_es >= 0)[0]]
+        neg_y_pts = res_arr[np.nonzero(y_es <= 0)[0]]
+        pos_y = pos_y_pts[:, 1]
+        neg_y = neg_y_pts[:, 1]
+        min_pos = pos_y_pts[np.argmin(pos_y)]
+        max_neg = neg_y_pts[np.argmax(neg_y)]
+        action_line_data = np.transpose(np.vstack((min_pos, max_neg)))
+        return action_line_data  # [[x0, x1], [y0, y1]]
 
-def get_contact_points(action_line_data: npt.NDArray, base_step: float, progress: float) -> npt.NDArray:
-    pt0, pt1 = action_line_data[:, 0], action_line_data[:, 1]
-    uv = get_unit_vector(pt1 - pt0)
-    st = -np.linalg.norm(pt0)  # type: ignore[attr-defined]
-    en = np.linalg.norm(pt1)  # type: ignore[attr-defined]
-    pt_range = seedrange(st, en, base_step * progress, base_step)
-    x_es = pt_range * uv[0]
-    y_es = pt_range * uv[1]
-    return np.array([x_es, y_es])
+    def get_contact_points(self, action_line_data_idx: int, progress: float) -> npt.NDArray:
+        action_line_data = getattr(self, f'action_line{action_line_data_idx}data')
+        pt0, pt1 = action_line_data[:, 0], action_line_data[:, 1]
+        uv = get_unit_vector(pt1 - pt0)
+        st = -np.linalg.norm(pt0)  # type: ignore[attr-defined]
+        en = np.linalg.norm(pt1)  # type: ignore[attr-defined]
+        pt_range = seedrange(st, en, self.base_step * progress, self.base_step)
+        x_es = pt_range * uv[0]
+        y_es = pt_range * uv[1]
+        return np.vstack((x_es, y_es))  # [[x_es...], [y_es...]]
+
+    def __iter__(self) -> Iterator[tuple[npt.NDArray, npt.NDArray]]:
+        while True:
+            self.i = (self.i + 1) % self.step_cnt
+            contacts0_data = self.get_contact_points(0, self.i / self.step_cnt - self.tooth0.shift_percent)
+            contacts1_data = self.get_contact_points(1, self.i / self.step_cnt - self.tooth1.shift_percent + 0.5)
+            yield contacts0_data, contacts1_data
+
+    def __str__(self) -> str:
+        return f'Average contact points number = {sci_round(self.ave_contact_points, 6)}\n'

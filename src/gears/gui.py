@@ -49,9 +49,8 @@ from matplotlib.pyplot import Circle  # type: ignore[attr-defined]
 
 from .helpers import indentate
 from .tooth_profile import GearSector
-from .tooth_profile import get_action_line
-from .tooth_profile import get_contact_points
 from .tooth_profile import HalfTooth
+from .tooth_profile import Transmission
 from .transforms import merge_xy_lims
 from .transforms import upd_xy_lims
 
@@ -254,7 +253,7 @@ class InputFrame(Frame):
 
         Label(common_params_frame, text='Profile shift coef').grid(row=7, column=0, padx=2, pady=2, sticky=W)
         tcl_up_or_down = self.register(self.shift_callback)
-        self.step = 0.05
+        self.step = 0.02
         self.profile_shift_coef = SpinboxValid(common_params_frame, check_abs_one, width=6, from_=-1e10, to=1e10,
                                                increment=self.step, command=(tcl_up_or_down, '%d'), justify='right')
         self.profile_shift_coef.grid(row=7, column=1, padx=2, pady=2, sticky=E)
@@ -392,6 +391,8 @@ class GearsApp(Tk):
     gear_sector1: GearSector
     rotating_gear_sector0: Iterator[npt.NDArray]  # Rotating gear_sector0
     rotating_gear_sector1: Iterator[npt.NDArray]  # Rotating gear_sector1
+    transmission: Transmission
+    transiter: Iterator[tuple[npt.NDArray, npt.NDArray]]
 
     def __init__(self) -> None:
         super().__init__()
@@ -482,7 +483,9 @@ class GearsApp(Tk):
         self.contacts1_data: npt.NDArray = np.array([[], []])
 
         self.inputs.input_callback()
-        self.delay_ms = 1
+        self.delay_ms: int = 1
+        self.step_cnt: int = 100
+        self.active_mode: bool = False
         self.after_id: Optional[str] = None
 
     def show_gear(self, idx: int) -> None:
@@ -495,10 +498,11 @@ class GearsApp(Tk):
         Returns:
             None.
         """
-        flag = getattr(self, f'has_gear{idx}').get()
-        self.ax.patches[idx].set_visible(flag)  # type: ignore[attr-defined]
-        self.plot_data(self.ax.lines[idx],  # type: ignore[attr-defined]
-                       *(getattr(self, f'gear{idx}data') if flag else np.array([[], []])))
+        if self.active_mode:
+            flag = getattr(self, f'has_gear{idx}').get()
+            self.ax.patches[idx].set_visible(flag)  # type: ignore[attr-defined]
+            self.plot_data(self.ax.lines[idx],  # type: ignore[attr-defined]
+                           *(getattr(self, f'gear{idx}data') if flag else np.array([[], []])))
 
     def show_action_lines(self) -> None:
         """
@@ -507,10 +511,11 @@ class GearsApp(Tk):
         Returns:
             None.
         """
+        flag = self.has_action_line.get() and self.active_mode
         self.plot_data(self.ax.lines[2],  # type: ignore[attr-defined]
-                       *(self.action_line0data if self.has_action_line.get() else np.array([[], []])))
+                       *(self.transmission.action_line0data if flag else np.array([[], []])))
         self.plot_data(self.ax.lines[3],  # type: ignore[attr-defined]
-                       *(self.action_line1data if self.has_action_line.get() else np.array([[], []])))
+                       *(self.transmission.action_line1data if flag else np.array([[], []])))
 
     def show_contact_points(self) -> None:
         """
@@ -519,10 +524,11 @@ class GearsApp(Tk):
         Returns:
             None.
         """
+        flag = self.has_contact_pts.get() and self.active_mode
         self.plot_data(self.ax.lines[4],  # type: ignore[attr-defined]
-                       *(self.contacts0_data if self.has_contact_pts.get() else np.array([[], []])))
+                       *(self.contacts0_data if flag else np.array([[], []])))
         self.plot_data(self.ax.lines[5],  # type: ignore[attr-defined]
-                       *(self.contacts1_data if self.has_contact_pts.get() else np.array([[], []])))
+                       *(self.contacts1_data if flag else np.array([[], []])))
 
     # Matplotlib funcs
     def on_key_press(self, event: KeyEvent) -> None:
@@ -552,7 +558,8 @@ class GearsApp(Tk):
                               de_coef=getattr(self.inputs, f'de_coef{i}_val'),
                               cutter_teeth_num=getattr(self.inputs, f'cutter_teeth_num{i}'),
                               profile_shift_coef=self.inputs.profile_shift_coef_val * ctr_x_factor)
-            gear_sector = GearSector(tooth, tooth, step_cnt=100, sector=sector, rot_ang=rot_ang, is_acw=is_acw)
+            gear_sector = GearSector(tooth, tooth, step_cnt=self.step_cnt,
+                                     sector=sector, rot_ang=rot_ang, is_acw=is_acw)
             ctr_x = tooth.pitch_radius * ctr_x_factor
             ctr_circ = Circle((ctr_x, 0), gear_sector.ht0.pitch_radius * 0.01, color=color)
             self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
@@ -567,16 +574,17 @@ class GearsApp(Tk):
         margin = max(max_x - min_x, max_y - min_y) * 0.05
         self.ax.set_xlim((min_x - margin, max_x + margin))  # type: ignore[arg-type]
         self.ax.set_ylim((min_y - margin, max_y + margin))  # type: ignore[arg-type]
-
-        self.action_line0data = get_action_line(self.tooth0, self.tooth1)
-        self.action_line1data = np.array([[self.action_line0data[0][1], self.action_line0data[0][0]],
-                                          [-self.action_line0data[1][1], -self.action_line0data[1][0]]])
+        self.transmission = Transmission(self.tooth0, self.tooth1, step_cnt=self.step_cnt)
+        self.transiter = iter(self.transmission)
+        self.active_mode = True
 
         self.text_msg(
             'Gear A parameters\n\n'
             f'{indentate(str(self.tooth0))}'
             '\n\n\nGear B parameters\n\n'
             f'{indentate(str(self.tooth1))}'
+            '\n\n\nTransmission parameters\n\n'
+            f'{indentate(str(self.transmission))}'
         )
         self.show_next_frame()
         self.show_action_lines()
@@ -605,11 +613,7 @@ class GearsApp(Tk):
         self.gear1data = np.vstack((x_es + self.tooth1.pitch_radius, y_es))
         for i in range(2):
             self.show_gear(i)
-        base_step = self.tooth0.base_diameter * np.pi / self.tooth0.tooth_num
-        self.contacts0_data = get_contact_points(self.action_line0data, base_step, self.gear_sector0.i / 100 -
-                                                 self.tooth0.shift_percent)
-        self.contacts1_data = get_contact_points(self.action_line1data, base_step, self.gear_sector0.i / 100 -
-                                                 self.tooth1.shift_percent + 0.5)
+        self.contacts0_data, self.contacts1_data = next(self.transiter)
         self.toolbar.upd_frame_num(self.gear_sector0.i)
         self.show_contact_points()
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
@@ -622,6 +626,7 @@ class GearsApp(Tk):
 
     def reset(self) -> None:
         """Restore initial appearance"""
+        self.active_mode = False
         [patch.remove() for patch in self.ax.patches]  # type: ignore[attr-defined]
         [self.plot_data(line, [], []) for line in self.ax.lines]  # type: ignore[attr-defined, arg-type, func-returns-value] # noqa: E501
         self.toolbar.reset_state()
@@ -631,11 +636,12 @@ class GearsApp(Tk):
         self.txt.delete(1.0, END)
         self.txt.insert(END, msg)
         self.txt.configure(state='disabled')
-        self.txt.yview_moveto(1.0)
 
     def save_text(self) -> None:
         filepath = filedialog.asksaveasfilename(
             filetypes=[('txt file', '.txt')], defaultextension='.txt', initialfile='params.txt')
+        if filepath in [tuple(), '']:  # No filepath given
+            return
         with open(filepath, 'w') as output_file:
             output_file.write(self.txt.get("1.0", "end-1c"))
 
