@@ -50,6 +50,7 @@ from matplotlib.pyplot import Circle  # type: ignore[attr-defined]
 from .helpers import indentate
 from .tooth_profile import GearSector
 from .tooth_profile import HalfTooth
+from .tooth_profile import Rack
 from .tooth_profile import Transmission
 from .transforms import merge_xy_lims
 from .transforms import upd_xy_lims
@@ -393,6 +394,8 @@ class GearsApp(Tk):
     rotating_gear_sector1: Iterator[npt.NDArray]  # Rotating gear_sector1
     transmission: Transmission
     transiter: Iterator[tuple[npt.NDArray, npt.NDArray]]
+    rack: Rack
+    rackiter: Iterator[npt.NDArray]
 
     def __init__(self) -> None:
         super().__init__()
@@ -405,10 +408,11 @@ class GearsApp(Tk):
         # Menubar
         menubar = Menu(self, relief=FLAT, bg='gray88')
         viewmenu = Menu(menubar, tearoff=0)
-        self.has_gear0 = BooleanVar(self, True)  # Menu checkbutton variable
-        self.has_gear1 = BooleanVar(self, True)  # Menu checkbutton variable
-        self.has_action_line = BooleanVar(self, False)  # Menu checkbutton variable
-        self.has_contact_pts = BooleanVar(self, False)  # Menu checkbutton variable
+        self.has_gear0 = BooleanVar(self, True)
+        self.has_gear1 = BooleanVar(self, True)
+        self.has_action_line = BooleanVar(self, False)
+        self.has_contact_pts = BooleanVar(self, False)
+        self.has_rack = BooleanVar(self, False)
         viewmenu.add_checkbutton(label='Gear A', onvalue=True, offvalue=False, variable=self.has_gear0,
                                  command=lambda: self.show_gear(0))
         viewmenu.add_checkbutton(label='Gear B', onvalue=True, offvalue=False, variable=self.has_gear1,
@@ -417,6 +421,8 @@ class GearsApp(Tk):
                                  command=self.show_action_lines)
         viewmenu.add_checkbutton(label='Contact points', onvalue=True, offvalue=False, variable=self.has_contact_pts,
                                  command=self.show_contact_points)
+        viewmenu.add_checkbutton(label='Rack', onvalue=True, offvalue=False, variable=self.has_rack,
+                                 command=self.show_rack)
         menubar.add_cascade(label='View', menu=viewmenu)
         self.config(menu=menubar)
 
@@ -469,6 +475,7 @@ class GearsApp(Tk):
                      linestyle='None')  # type: ignore[call-arg, arg-type]
         self.ax.plot([], [], marker='o', markersize=5, mec='m', mfc=(1, 1, 1, 0),
                      linestyle='None')  # type: ignore[call-arg, arg-type]
+        self.ax.plot([], [], color='c', linewidth=1)  # type: ignore[call-arg]
         self.ax.set_xlim((0, 1))  # type: ignore[arg-type]
         self.ax.set_ylim((0, 1))  # type: ignore[arg-type]
         self.toolbar = ToolbarPlayer(self.canvas, self.plots_frame, self.play, self.next_frame, self.pause,
@@ -481,6 +488,7 @@ class GearsApp(Tk):
         self.action_line1data: npt.NDArray = np.array([[], []])
         self.contacts0_data: npt.NDArray = np.array([[], []])
         self.contacts1_data: npt.NDArray = np.array([[], []])
+        self.rack_data: npt.NDArray = np.array([[], []])
 
         self.inputs.input_callback()
         self.delay_ms: int = 1
@@ -530,6 +538,17 @@ class GearsApp(Tk):
         self.plot_data(self.ax.lines[5],  # type: ignore[attr-defined]
                        *(self.contacts1_data if flag else np.array([[], []])))
 
+    def show_rack(self) -> None:
+        """
+        Show or hide the rack depending on the corresponding checkbox variable.
+
+        Returns:
+            None.
+        """
+        flag = self.has_rack.get() and self.active_mode
+        self.plot_data(self.ax.lines[6],  # type: ignore[attr-defined]
+                       *(self.rack_data if flag else np.array([[], []])))
+
     # Matplotlib funcs
     def on_key_press(self, event: KeyEvent) -> None:
         key_press_handler(event, self.canvas, self.toolbar)
@@ -576,6 +595,9 @@ class GearsApp(Tk):
         self.ax.set_ylim((min_y - margin, max_y + margin))  # type: ignore[arg-type]
         self.transmission = Transmission(self.tooth0, self.tooth1, step_cnt=self.step_cnt)
         self.transiter = iter(self.transmission)
+        self.rack = Rack(self.step_cnt, self.inputs.module_val, self.inputs.pressure_angle_val,
+                         ad_coef=self.tooth1.de_coef, de_coef=self.tooth0.de_coef)
+        self.rackiter = iter(self.rack)
         self.active_mode = True
 
         self.text_msg(
@@ -614,8 +636,10 @@ class GearsApp(Tk):
         for i in range(2):
             self.show_gear(i)
         self.contacts0_data, self.contacts1_data = next(self.transiter)
+        self.rack_data = next(self.rackiter)
         self.toolbar.upd_frame_num(self.gear_sector0.i)
         self.show_contact_points()
+        self.show_rack()
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
 
     def break_loop(self) -> None:

@@ -408,3 +408,46 @@ class Transmission:
 
     def __str__(self) -> str:
         return f'Average contact points number = {sci_round(self.ave_contact_points, 6)}\n'
+
+
+class Rack:
+    def __init__(self, step_cnt: int, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
+                 ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF) -> None:
+        self.step_cnt = step_cnt
+        self.circular_pitch = module * np.pi
+        dedendum = module * de_coef
+        addendum = module * ad_coef
+        tan_pressure_angle = np.tan(pressure_angle)
+        y_proj_de = dedendum * tan_pressure_angle
+        y_proj_ad = addendum * tan_pressure_angle
+        self.seeds = [y_proj_de - self.circular_pitch / 2, -y_proj_de, y_proj_ad, -y_proj_ad + self.circular_pitch / 2]
+        self.x_vals = np.array([-dedendum, -dedendum, addendum, addendum])
+        self.i = self.step_cnt - 1
+        self.set_boundaries()
+
+    def set_boundaries(self) -> None:
+        self.st = -self.circular_pitch * 2
+        self.en = self.circular_pitch * 2
+
+    def __iter__(self) -> Iterator[npt.NDArray]:
+        while True:
+            # Generate y values within the range
+            self.i = (self.i + 1) % self.step_cnt
+            progress = -self.i / self.step_cnt * self.circular_pitch
+            pt_sets = [seedrange(self.st, self.en, seed + progress, self.circular_pitch) for seed in self.seeds]
+
+            length = max([len(pt_set) for pt_set in pt_sets])
+
+            # Augment with NaNs, and convert into 2d array.
+            pt_sets_arr = np.array([pt_set if len(pt_set) == length else pt_set + np.nan for pt_set in pt_sets])
+
+            # Sort sub arrays
+            rot_val = -np.argmin(pt_sets_arr[:, 0])
+            y_es = np.transpose(np.roll(pt_sets_arr, rot_val, axis=0)).flatten()
+
+            # Masking the values
+            mask = ~np.isnan(y_es)  # Mask to reject NaNs and extra values
+            x_es = np.tile(np.roll(self.x_vals, rot_val), length)[mask]
+            y_es = y_es[mask]
+
+            yield np.vstack((x_es, y_es))

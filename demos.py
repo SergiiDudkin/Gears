@@ -6,7 +6,8 @@ from src.gears import seedrange
 
 
 # print(seedrange(-23.4, 67.5, 54.7, 3))
-print(seedrange(2.1, 2.5, 2.6, 2))
+# print(seedrange(2.1, 2.5, 2.6, 2))
+print(seedrange(10, 1, 4, 3))
 # res = seedrange(23.5, 79.1, 53.4, 4.7)
 # print(res[np.argmin(np.abs(res - 53.5))])
 
