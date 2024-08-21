@@ -595,8 +595,12 @@ class GearsApp(Tk):
         self.ax.set_ylim((min_y - margin, max_y + margin))  # type: ignore[arg-type]
         self.transmission = Transmission(self.tooth0, self.tooth1, step_cnt=self.step_cnt)
         self.transiter = iter(self.transmission)
-        self.rack = Rack(self.step_cnt, self.inputs.module_val, self.inputs.pressure_angle_val,
-                         ad_coef=self.tooth1.de_coef, de_coef=self.tooth0.de_coef)
+        self.rack = Rack(step_cnt=self.step_cnt,
+                         module=self.inputs.module_val,
+                         pressure_angle=self.inputs.pressure_angle_val,
+                         ad_coef=self.tooth1.de_coef,
+                         de_coef=self.tooth0.de_coef,
+                         profile_shift_coef=self.inputs.profile_shift_coef_val)
         self.rackiter = iter(self.rack)
         self.active_mode = True
 

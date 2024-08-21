@@ -412,14 +412,16 @@ class Transmission:
 
 class Rack:
     def __init__(self, step_cnt: int, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
-                 ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF) -> None:
+                 ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF,
+                 profile_shift_coef: float = 0) -> None:
         self.step_cnt = step_cnt
         self.circular_pitch = module * np.pi
-        dedendum = module * de_coef
-        addendum = module * ad_coef
+        dedendum = de_coef * module
+        addendum = ad_coef * module
+        profile_shift = profile_shift_coef * module
         tan_pressure_angle = np.tan(pressure_angle)
-        y_proj_de = dedendum * tan_pressure_angle
-        y_proj_ad = addendum * tan_pressure_angle
+        y_proj_de = (dedendum + profile_shift) * tan_pressure_angle
+        y_proj_ad = (addendum - profile_shift) * tan_pressure_angle
         self.seeds = [y_proj_de - self.circular_pitch / 2, -y_proj_de, y_proj_ad, -y_proj_ad + self.circular_pitch / 2]
         self.x_vals = np.array([-dedendum, -dedendum, addendum, addendum])
         self.i = self.step_cnt - 1
