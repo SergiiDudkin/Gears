@@ -19,6 +19,7 @@ from .gear_params import STANDARD_DEDENDUM_COEF
 from .gear_params import STANDARD_PRESSURE_ANGLE
 from .helpers import get_unit_vector
 from .helpers import linecirc_intersec
+from .helpers import lineline_intersec
 from .helpers import sci_round
 from .helpers import seedrange
 from .transforms import cartesian_to_polar
@@ -416,32 +417,42 @@ class Rack:
                  profile_shift_coef: float = 0) -> None:
         self.step_cnt = step_cnt
         self.circular_pitch = module * np.pi
-        dedendum = de_coef * module
-        addendum = ad_coef * module
+        self.dedendum = de_coef * module
+        self.addendum = ad_coef * module
         profile_shift = profile_shift_coef * module
         tan_pressure_angle = np.tan(pressure_angle)
-        y_proj_de = (dedendum + profile_shift) * tan_pressure_angle
-        y_proj_ad = (addendum - profile_shift) * tan_pressure_angle
+        y_proj_de = (self.dedendum + profile_shift) * tan_pressure_angle
+        y_proj_ad = (self.addendum - profile_shift) * tan_pressure_angle
         self.seeds = [y_proj_de - self.circular_pitch / 2, -y_proj_de, y_proj_ad, -y_proj_ad + self.circular_pitch / 2]
-        self.x_vals = np.array([-dedendum, -dedendum, addendum, addendum])
+        self.x_vals = np.array([-self.dedendum, -self.dedendum, self.addendum, self.addendum])
         self.i = self.step_cnt - 1
-        self.set_boundaries()
 
-    def set_boundaries(self) -> None:
+        # Set default boundaries
         self.st = -self.circular_pitch * 2
         self.en = self.circular_pitch * 2
+
+    def set_smart_boundaries(self, tooth0: HalfTooth, tooth1: HalfTooth, offset_coef: float = 0) -> None:
+        intersection_pt0 = np.sqrt(np.square(tooth0.outside_radius) - np.square(tooth0.pitch_radius - self.dedendum))
+        intersection_pt1 = np.sqrt(np.square(tooth1.outside_radius) - np.square(tooth1.pitch_radius - self.addendum))
+        lim = max(intersection_pt0, intersection_pt1) + offset_coef * self.circular_pitch
+        self.st, self.en = -lim, lim
+
+    def get_limits(self) -> tuple[float, float, float, float]:
+        return -self.dedendum, self.st, self.addendum, self.en
 
     def __iter__(self) -> Iterator[npt.NDArray]:
         while True:
             # Generate y values within the range
             self.i = (self.i + 1) % self.step_cnt
             progress = -self.i / self.step_cnt * self.circular_pitch
-            pt_sets = [seedrange(self.st, self.en, seed + progress, self.circular_pitch) for seed in self.seeds]
+            pt_sets = [seedrange(self.st - self.circular_pitch, self.en + self.circular_pitch,
+                                 seed + progress, self.circular_pitch) for seed in self.seeds]
 
             length = max([len(pt_set) for pt_set in pt_sets])
 
-            # Augment with NaNs, and convert into 2d array.
-            pt_sets_arr = np.array([pt_set if len(pt_set) == length else pt_set + np.nan for pt_set in pt_sets])
+            # Augment with NaNs, and convert the list of arrays into 2d array.
+            pt_sets_arr = np.array([pt_set if len(pt_set) == length else np.append(pt_set, np.nan)
+                                   for pt_set in pt_sets])
 
             # Sort sub arrays
             rot_val = -np.argmin(pt_sets_arr[:, 0])
@@ -451,5 +462,17 @@ class Rack:
             mask = ~np.isnan(y_es)  # Mask to reject NaNs and extra values
             x_es = np.tile(np.roll(self.x_vals, rot_val), length)[mask]
             y_es = y_es[mask]
+
+            idx = np.searchsorted(y_es, self.st, side='right')
+            x_term, y_term = lineline_intersec(x_es[idx - 1], y_es[idx - 1], x_es[idx], y_es[idx],
+                                               0, self.st, 1, self.st)
+            x_es = np.insert(x_es[idx:], 0, x_term)
+            y_es = np.insert(y_es[idx:], 0, y_term)
+
+            idx = np.searchsorted(y_es, self.en)
+            x_term, y_term = lineline_intersec(x_es[idx - 1], y_es[idx - 1], x_es[idx], y_es[idx],
+                                               0, self.en, 1, self.en)
+            x_es = np.append(x_es[:idx], x_term)
+            y_es = np.append(y_es[:idx], y_term)
 
             yield np.vstack((x_es, y_es))

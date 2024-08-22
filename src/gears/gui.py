@@ -587,12 +587,8 @@ class GearsApp(Tk):
             setattr(self, f'tooth{i}', tooth)
             setattr(self, f'gear_sector{i}', gear_sector)
             setattr(self, f'rotating_gear_sector{i}', iter(gear_sector))
-
         xy_lims = upd_xy_lims(-self.tooth0.pitch_radius, self.tooth1.pitch_radius, *xy_lims)
-        min_x, min_y, max_x, max_y = xy_lims
-        margin = max(max_x - min_x, max_y - min_y) * 0.05
-        self.ax.set_xlim((min_x - margin, max_x + margin))  # type: ignore[arg-type]
-        self.ax.set_ylim((min_y - margin, max_y + margin))  # type: ignore[arg-type]
+
         self.transmission = Transmission(self.tooth0, self.tooth1, step_cnt=self.step_cnt)
         self.transiter = iter(self.transmission)
         self.rack = Rack(step_cnt=self.step_cnt,
@@ -601,9 +597,18 @@ class GearsApp(Tk):
                          ad_coef=self.tooth1.de_coef,
                          de_coef=self.tooth0.de_coef,
                          profile_shift_coef=self.inputs.profile_shift_coef_val)
+        self.rack.set_smart_boundaries(self.tooth0, self.tooth1,
+                                       offset_coef=max(self.tooth0.tooth_num, self.tooth1.tooth_num) / 32)
+        xy_lims = merge_xy_lims(*xy_lims, *self.rack.get_limits())
         self.rackiter = iter(self.rack)
-        self.active_mode = True
 
+        # Set plot limits, add margin
+        min_x, min_y, max_x, max_y = xy_lims
+        margin = max(max_x - min_x, max_y - min_y) * 0.05
+        self.ax.set_xlim((min_x - margin, max_x + margin))  # type: ignore[arg-type]
+        self.ax.set_ylim((min_y - margin, max_y + margin))  # type: ignore[arg-type]
+
+        self.active_mode = True
         self.text_msg(
             'Gear A parameters\n\n'
             f'{indentate(str(self.tooth0))}'

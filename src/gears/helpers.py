@@ -54,6 +54,43 @@ def linecirc_intersec(x1: float, y1: float, x2: float, y2: float, cntr_x: float,
         raise RuntimeError('No line-circumference intersection!')
 
 
+def lineline_intersec(x1: float, y1: float, x2: float, y2: float,
+                      x3: float, y3: float, x4: float, y4: float) -> tuple[float, float]:
+    """
+    Find intersection of two lines.
+
+    The lines are defined as non-zero length non-parallel segments.
+
+    Args:
+        x1: Segment A, point 1, x.
+        y1: Segment A, point 1, y.
+        x2: Segment A, point 2, x.
+        y2: Segment A, point 2, y.
+        x3: Segment B, point 1, x.
+        y3: Segment B, point 1, y.
+        x4: Segment B, point 2, x.
+        y4: Segment B, point 2, y.
+
+    Returns:
+        Point of intersection.
+
+    Raises:
+        RuntimeError: No intersection point.
+    """
+    a = x1 * y2 - y1 * x2
+    b = x3 - x4
+    c = x1 - x2
+    d = x3 * y4 - y3 * x4
+    e = y3 - y4
+    f = y1 - y2
+    g = c * e - f * b
+    if g == 0:
+        raise RuntimeError('Parallel lines or zero length segment(s)!')
+    ipoi_y = (a * e - f * d) / g  # Intersection point, x value
+    ipoi_x = (a * b - c * d) / g  # Intersection point, y value
+    return ipoi_x, ipoi_y
+
+
 def seedrange(st: float, en: float, seed: float, step: float) -> npt.NDArray:
     """
     Generates a range within st and en (both including), where the seed matches the infinite sequence.
