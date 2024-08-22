@@ -463,16 +463,14 @@ class Rack:
             x_es = np.tile(np.roll(self.x_vals, rot_val), length)[mask]
             y_es = y_es[mask]
 
-            idx = np.searchsorted(y_es, self.st, side='right')
-            x_term, y_term = lineline_intersec(x_es[idx - 1], y_es[idx - 1], x_es[idx], y_es[idx],
-                                               0, self.st, 1, self.st)
-            x_es = np.insert(x_es[idx:], 0, x_term)
-            y_es = np.insert(y_es[idx:], 0, y_term)
-
-            idx = np.searchsorted(y_es, self.en)
-            x_term, y_term = lineline_intersec(x_es[idx - 1], y_es[idx - 1], x_es[idx], y_es[idx],
-                                               0, self.en, 1, self.en)
-            x_es = np.append(x_es[:idx], x_term)
-            y_es = np.append(y_es[:idx], y_term)
-
-            yield np.vstack((x_es, y_es))
+            # Stripping extra length
+            data = np.vstack((x_es, y_es))
+            i_st = np.searchsorted(y_es, self.st, side='right')
+            x_term_st, y_term_st = lineline_intersec(x_es[i_st - 1], y_es[i_st - 1], x_es[i_st], y_es[i_st],
+                                                     0, self.st, 1, self.st)
+            i_en = np.searchsorted(y_es, self.en)
+            x_term_en, y_term_en = lineline_intersec(x_es[i_en - 1], y_es[i_en - 1], x_es[i_en], y_es[i_en],
+                                                     0, self.en, 1, self.en)
+            data[:, i_st - 1] = x_term_st, y_term_st
+            data[:, i_en] = x_term_en, y_term_en
+            yield data[:, i_st - 1: i_en + 1]
