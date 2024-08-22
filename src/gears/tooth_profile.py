@@ -412,6 +412,8 @@ class Transmission:
 
 
 class Rack:
+    """Animated rack"""
+
     def __init__(self, step_cnt: int, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
                  ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF,
                  profile_shift_coef: float = 0) -> None:
@@ -431,13 +433,30 @@ class Rack:
         self.st = -self.circular_pitch * 2
         self.en = self.circular_pitch * 2
 
-    def set_smart_boundaries(self, tooth0: HalfTooth, tooth1: HalfTooth, offset_coef: float = 0) -> None:
+    def set_smart_boundaries(self, tooth0: HalfTooth, tooth1: HalfTooth) -> None:
+        """
+        Set boundaries depending on the mating gears.
+
+        Args:
+            tooth0: Gear 0.
+            tooth1: Gear 1.
+
+        Returns:
+            None.
+        """
         intersection_pt0 = np.sqrt(np.square(tooth0.outside_radius) - np.square(tooth0.pitch_radius - self.dedendum))
         intersection_pt1 = np.sqrt(np.square(tooth1.outside_radius) - np.square(tooth1.pitch_radius - self.addendum))
+        offset_coef = max(tooth0.tooth_num, tooth1.tooth_num) / 32
         lim = max(intersection_pt0, intersection_pt1) + offset_coef * self.circular_pitch
         self.st, self.en = -lim, lim
 
     def get_limits(self) -> tuple[float, float, float, float]:
+        """
+        Get the curve boundaries
+
+        Returns:
+            min_x, min_y, max_x, max_y
+        """
         return -self.dedendum, self.st, self.addendum, self.en
 
     def __iter__(self) -> Iterator[npt.NDArray]:
@@ -466,11 +485,9 @@ class Rack:
             # Stripping extra length
             data = np.vstack((x_es, y_es))
             i_st = np.searchsorted(y_es, self.st, side='right')
-            x_term_st, y_term_st = lineline_intersec(x_es[i_st - 1], y_es[i_st - 1], x_es[i_st], y_es[i_st],
-                                                     0, self.st, 1, self.st)
             i_en = np.searchsorted(y_es, self.en)
-            x_term_en, y_term_en = lineline_intersec(x_es[i_en - 1], y_es[i_en - 1], x_es[i_en], y_es[i_en],
-                                                     0, self.en, 1, self.en)
-            data[:, i_st - 1] = x_term_st, y_term_st
-            data[:, i_en] = x_term_en, y_term_en
+            data[:, i_st - 1] = lineline_intersec(x_es[i_st - 1], y_es[i_st - 1], x_es[i_st], y_es[i_st],
+                                                  0, self.st, 1, self.st)
+            data[:, i_en] = lineline_intersec(x_es[i_en - 1], y_es[i_en - 1], x_es[i_en], y_es[i_en],
+                                              0, self.en, 1, self.en)
             yield data[:, i_st - 1: i_en + 1]

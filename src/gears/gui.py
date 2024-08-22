@@ -566,6 +566,7 @@ class GearsApp(Tk):
         self.toolbar.play_state()
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
+        # Gear setup
         for i, (is_acw, sector, rot_ang, color, ctr_x_factor) in enumerate([
             (False, (np.pi * 1.5, np.pi * 0.5), 0, 'b', -1),
             (True, (np.pi * 0.5, np.pi * 1.5), np.pi, 'r', 1)
@@ -589,6 +590,7 @@ class GearsApp(Tk):
             setattr(self, f'rotating_gear_sector{i}', iter(gear_sector))
         xy_lims = upd_xy_lims(-self.tooth0.pitch_radius, self.tooth1.pitch_radius, *xy_lims)
 
+        # Rack setup
         self.transmission = Transmission(self.tooth0, self.tooth1, step_cnt=self.step_cnt)
         self.transiter = iter(self.transmission)
         self.rack = Rack(step_cnt=self.step_cnt,
@@ -597,8 +599,7 @@ class GearsApp(Tk):
                          ad_coef=self.tooth1.de_coef,
                          de_coef=self.tooth0.de_coef,
                          profile_shift_coef=self.inputs.profile_shift_coef_val)
-        self.rack.set_smart_boundaries(self.tooth0, self.tooth1,
-                                       offset_coef=max(self.tooth0.tooth_num, self.tooth1.tooth_num) / 32)
+        self.rack.set_smart_boundaries(self.tooth0, self.tooth1)
         xy_lims = merge_xy_lims(*xy_lims, *self.rack.get_limits())
         self.rackiter = iter(self.rack)
 
