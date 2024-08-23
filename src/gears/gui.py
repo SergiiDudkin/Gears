@@ -340,58 +340,37 @@ class InputFrame(Frame):
         return np.deg2rad(float(self.pressure_angle.strvar.get()))
 
     @property
-    def tooth_num0_val(self) -> int:
-        return int(self.tooth_num0.strvar.get())
+    def tooth_num_vals(self) -> tuple[int, int]:
+        return int(self.tooth_num0.strvar.get()), int(self.tooth_num1.strvar.get())
 
     @property
-    def ad_coef0_val(self) -> float:
-        return float(self.ad_coef0.strvar.get())
+    def ad_coef_vals(self) -> tuple[float, float]:
+        return float(self.ad_coef0.strvar.get()), float(self.ad_coef1.strvar.get())
 
     @property
-    def de_coef0_val(self) -> float:
-        return float(self.de_coef0.strvar.get())
+    def de_coef_vals(self) -> tuple[float, float]:
+        return float(self.de_coef0.strvar.get()), float(self.de_coef1.strvar.get())
 
     @property
-    def tooth_num1_val(self) -> int:
-        return int(self.tooth_num1.strvar.get())
-
-    @property
-    def ad_coef1_val(self) -> float:
-        return float(self.ad_coef1.strvar.get())
-
-    @property
-    def de_coef1_val(self) -> float:
-        return float(self.de_coef1.strvar.get())
-
-    @property
-    def cutter_teeth_num0(self) -> int:
-        return self.cutter_teeth_num_val(0)
-
-    @property
-    def cutter_teeth_num1(self) -> int:
-        return self.cutter_teeth_num_val(1)
+    def cutter_teeth_nums(self) -> tuple[int, int]:
+        cutter_val = self.cutter.get()
+        if cutter_val == 0:
+            return 0, 0
+        elif cutter_val == 1:
+            return (int(self.cutter_tooth_num.get()),) * 2
+        else:
+            return self.tooth_num_vals
 
     @property
     def profile_shift_coef_val(self) -> float:
         return float(self.profile_shift_coef.strvar.get())
 
-    def cutter_teeth_num_val(self, gear_idx: int) -> int:
-        cutter_val = self.cutter.get()
-        if cutter_val == 0:
-            return 0
-        elif cutter_val == 1:
-            return int(self.cutter_tooth_num.get())
-        else:
-            return (self.tooth_num1_val, self.tooth_num0_val)[gear_idx]
-
 
 class GearsApp(Tk):
     """Gears app with GUI"""
 
-    tooth0: HalfTooth
-    tooth1: HalfTooth
-    gear_sector0: GearSector
-    gear_sector1: GearSector
+    teeth: list[HalfTooth]
+    gear_sectors: list[GearSector]
     transmission: Transmission
     rack: Rack
 
@@ -406,14 +385,13 @@ class GearsApp(Tk):
         # Menu bar
         menubar = Menu(self, relief=FLAT, bg='gray88')
         viewmenu = Menu(menubar, tearoff=0)
-        self.has_gear0 = BooleanVar(self, True)
-        self.has_gear1 = BooleanVar(self, True)
+        self.has_gears = (BooleanVar(self, True), BooleanVar(self, True))
         self.has_action_line = BooleanVar(self, False)
         self.has_contact_pts = BooleanVar(self, False)
         self.has_rack = BooleanVar(self, False)
-        viewmenu.add_checkbutton(label='Gear A', onvalue=True, offvalue=False, variable=self.has_gear0,
+        viewmenu.add_checkbutton(label='Gear A', onvalue=True, offvalue=False, variable=self.has_gears[0],
                                  command=lambda: self.show_gear(0))
-        viewmenu.add_checkbutton(label='Gear B', onvalue=True, offvalue=False, variable=self.has_gear1,
+        viewmenu.add_checkbutton(label='Gear B', onvalue=True, offvalue=False, variable=self.has_gears[1],
                                  command=lambda: self.show_gear(1))
         viewmenu.add_checkbutton(label='Action line', onvalue=True, offvalue=False, variable=self.has_action_line,
                                  command=self.show_action_lines)
@@ -506,10 +484,10 @@ class GearsApp(Tk):
             None.
         """
         if self.active_mode:
-            flag = getattr(self, f'has_gear{idx}').get()
+            flag = self.has_gears[idx].get()
             self.ax.patches[idx].set_visible(flag)  # type: ignore[attr-defined]
-            data = getattr(self, f'gear_sector{idx}').get_data()
-            data[0] += bool_to_sign(idx) * getattr(self, f'tooth{idx}').pitch_radius
+            data = self.gear_sectors[idx].get_data()
+            data[0] += bool_to_sign(idx) * self.teeth[idx].pitch_radius
             self.plot_data(self.ax.lines[idx],  # type: ignore[attr-defined]
                            *(data if flag else np.array([[], []])))
 
@@ -569,37 +547,38 @@ class GearsApp(Tk):
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
         # Gears setup
-        for i, (is_acw, sector, rot_ang, color, ctr_x_factor) in enumerate([
+        self.teeth, self.gear_sectors = [], []
+        for i, (is_acw, sector, rot_ang, color, x_sign) in enumerate([
             (False, (np.pi * 1.5, np.pi * 0.5), 0, 'b', -1),
             (True, (np.pi * 0.5, np.pi * 1.5), np.pi, 'r', 1)
         ]):
-            tooth = HalfTooth(tooth_num=getattr(self.inputs, f'tooth_num{i}_val'),
+            tooth = HalfTooth(tooth_num=self.inputs.tooth_num_vals[i],
                               module=self.inputs.module_val,
                               pressure_angle=self.inputs.pressure_angle_val,
-                              ad_coef=getattr(self.inputs, f'ad_coef{i}_val'),
-                              de_coef=getattr(self.inputs, f'de_coef{i}_val'),
-                              cutter_teeth_num=getattr(self.inputs, f'cutter_teeth_num{i}'),
-                              profile_shift_coef=self.inputs.profile_shift_coef_val * ctr_x_factor)
+                              ad_coef=self.inputs.ad_coef_vals[i],
+                              de_coef=self.inputs.de_coef_vals[i],
+                              cutter_teeth_num=self.inputs.cutter_teeth_nums[i],
+                              profile_shift_coef=self.inputs.profile_shift_coef_val * x_sign)
             gear_sector = GearSector(tooth, tooth, sector=sector, rot_ang=rot_ang, is_acw=is_acw)
-            ctr_x = tooth.pitch_radius * ctr_x_factor
+            ctr_x = tooth.pitch_radius * x_sign
             ctr_circ = Circle((ctr_x, 0), gear_sector.ht0.pitch_radius * 0.01, color=color)
             self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
             xy_lims_ = gear_sector.get_limits()
             xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + ctr_x, xy_lims_[1], xy_lims_[2] + ctr_x, xy_lims_[3])
-            setattr(self, f'tooth{i}', tooth)
-            setattr(self, f'gear_sector{i}', gear_sector)
-        xy_lims = upd_xy_lims(-self.tooth0.pitch_radius, self.tooth1.pitch_radius, *xy_lims)
+            self.teeth.append(tooth)
+            self.gear_sectors.append(gear_sector)
+        xy_lims = upd_xy_lims(-self.teeth[0].pitch_radius, self.teeth[1].pitch_radius, *xy_lims)
 
         # Action lines and contact points setup
-        self.transmission = Transmission(self.tooth0, self.tooth1)
+        self.transmission = Transmission(*self.teeth)
 
         # Rack setup
         self.rack = Rack(module=self.inputs.module_val,
                          pressure_angle=self.inputs.pressure_angle_val,
-                         ad_coef=self.tooth1.de_coef,
-                         de_coef=self.tooth0.de_coef,
+                         ad_coef=self.teeth[1].de_coef,
+                         de_coef=self.teeth[0].de_coef,
                          profile_shift_coef=self.inputs.profile_shift_coef_val)
-        self.rack.set_smart_boundaries(self.tooth0, self.tooth1)
+        self.rack.set_smart_boundaries(self.teeth[0], self.teeth[1])
         xy_lims = merge_xy_lims(*xy_lims, *self.rack.get_limits())
 
         # Set plot limits, add margin
@@ -611,9 +590,9 @@ class GearsApp(Tk):
         self.active_mode = True
         self.text_msg(
             'Gear A parameters\n\n'
-            f'{indentate(str(self.tooth0))}'
+            f'{indentate(str(self.teeth[0]))}'
             '\n\n\nGear B parameters\n\n'
-            f'{indentate(str(self.tooth1))}'
+            f'{indentate(str(self.teeth[1]))}'
             '\n\n\nTransmission parameters\n\n'
             f'{indentate(str(self.transmission))}'
         )
