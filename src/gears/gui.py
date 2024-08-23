@@ -652,8 +652,3 @@ class GearsApp(Tk):
             return
         with open(filepath, 'w') as output_file:
             output_file.write(self.txt.get("1.0", "end-1c"))
-
-
-if __name__ == '__main__':
-    gears_app = GearsApp()
-    gears_app.mainloop()
