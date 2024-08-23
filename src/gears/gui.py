@@ -34,7 +34,6 @@ from tkinter import X
 from tkinter import Y
 from typing import Callable
 from typing import cast
-from typing import Iterator
 from typing import Optional
 
 import numpy as np
@@ -47,6 +46,8 @@ from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.pyplot import Circle  # type: ignore[attr-defined]
 
+from .helpers import bool_to_sign
+from .helpers import Clock
 from .helpers import indentate
 from .tooth_profile import GearSector
 from .tooth_profile import HalfTooth
@@ -70,6 +71,7 @@ class ToolbarPlayer(NavigationToolbar2Tk):
         self.callback_play = callback_play
         self.callback_pause = callback_pause
         self.callback_resume = callback_resume
+        self.clock = Clock()
 
         super().__init__(canvas, window, pack_toolbar=False)
         self.pack(side=BOTTOM, padx=2, pady=0, fill=X)
@@ -119,8 +121,8 @@ class ToolbarPlayer(NavigationToolbar2Tk):
         self.set_btn_img(self.play_btn, self.pause_img)
         self.state = State.PLAY
 
-    def upd_frame_num(self, num):
-        self.cnt_lbl['text'] = f'#{num}'
+    def upd_frame_num(self):
+        self.cnt_lbl['text'] = f'#{self.clock.i}'
 
     def activate(self):
         if self.state == State.RESET:
@@ -390,12 +392,8 @@ class GearsApp(Tk):
     tooth1: HalfTooth
     gear_sector0: GearSector
     gear_sector1: GearSector
-    rotating_gear_sector0: Iterator[npt.NDArray]  # Rotating gear_sector0
-    rotating_gear_sector1: Iterator[npt.NDArray]  # Rotating gear_sector1
     transmission: Transmission
-    transiter: Iterator[tuple[npt.NDArray, npt.NDArray]]
     rack: Rack
-    rackiter: Iterator[npt.NDArray]
 
     def __init__(self) -> None:
         super().__init__()
@@ -405,7 +403,7 @@ class GearsApp(Tk):
         self.geometry('1000x800')
         self.resizable(True, True)
 
-        # Menubar
+        # Menu bar
         menubar = Menu(self, relief=FLAT, bg='gray88')
         viewmenu = Menu(menubar, tearoff=0)
         self.has_gear0 = BooleanVar(self, True)
@@ -488,14 +486,15 @@ class GearsApp(Tk):
         self.action_line1data: npt.NDArray = np.array([[], []])
         self.contacts0_data: npt.NDArray = np.array([[], []])
         self.contacts1_data: npt.NDArray = np.array([[], []])
-        self.rack_data: npt.NDArray = np.array([[], []])
 
         self.inputs.input_callback()
         self.delay_ms: int = 1
-        self.step_cnt: int = 100
+        self.clock = Clock()
+        self.clock.set_step_cnt(100)
         self.active_mode: bool = False
         self.after_id: Optional[str] = None
 
+    # Show or hide elements
     def show_gear(self, idx: int) -> None:
         """
         Show or hide a gear depending on the corresponding checkbox variable.
@@ -509,8 +508,10 @@ class GearsApp(Tk):
         if self.active_mode:
             flag = getattr(self, f'has_gear{idx}').get()
             self.ax.patches[idx].set_visible(flag)  # type: ignore[attr-defined]
+            data = getattr(self, f'gear_sector{idx}').get_data()
+            data[0] += bool_to_sign(idx) * getattr(self, f'tooth{idx}').pitch_radius
             self.plot_data(self.ax.lines[idx],  # type: ignore[attr-defined]
-                           *(getattr(self, f'gear{idx}data') if flag else np.array([[], []])))
+                           *(data if flag else np.array([[], []])))
 
     def show_action_lines(self) -> None:
         """
@@ -533,10 +534,11 @@ class GearsApp(Tk):
             None.
         """
         flag = self.has_contact_pts.get() and self.active_mode
+        contacts_dir_data, contacts_rev_data = self.transmission.get_data()
         self.plot_data(self.ax.lines[4],  # type: ignore[attr-defined]
-                       *(self.contacts0_data if flag else np.array([[], []])))
+                       *(contacts_dir_data if flag else np.array([[], []])))
         self.plot_data(self.ax.lines[5],  # type: ignore[attr-defined]
-                       *(self.contacts1_data if flag else np.array([[], []])))
+                       *(contacts_rev_data if flag else np.array([[], []])))
 
     def show_rack(self) -> None:
         """
@@ -547,7 +549,7 @@ class GearsApp(Tk):
         """
         flag = self.has_rack.get() and self.active_mode
         self.plot_data(self.ax.lines[6],  # type: ignore[attr-defined]
-                       *(self.rack_data if flag else np.array([[], []])))
+                       *(self.rack.get_data() if flag else np.array([[], []])))
 
     # Matplotlib funcs
     def on_key_press(self, event: KeyEvent) -> None:
@@ -566,7 +568,7 @@ class GearsApp(Tk):
         self.toolbar.play_state()
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
 
-        # Gear setup
+        # Gears setup
         for i, (is_acw, sector, rot_ang, color, ctr_x_factor) in enumerate([
             (False, (np.pi * 1.5, np.pi * 0.5), 0, 'b', -1),
             (True, (np.pi * 0.5, np.pi * 1.5), np.pi, 'r', 1)
@@ -578,8 +580,7 @@ class GearsApp(Tk):
                               de_coef=getattr(self.inputs, f'de_coef{i}_val'),
                               cutter_teeth_num=getattr(self.inputs, f'cutter_teeth_num{i}'),
                               profile_shift_coef=self.inputs.profile_shift_coef_val * ctr_x_factor)
-            gear_sector = GearSector(tooth, tooth, step_cnt=self.step_cnt,
-                                     sector=sector, rot_ang=rot_ang, is_acw=is_acw)
+            gear_sector = GearSector(tooth, tooth, sector=sector, rot_ang=rot_ang, is_acw=is_acw)
             ctr_x = tooth.pitch_radius * ctr_x_factor
             ctr_circ = Circle((ctr_x, 0), gear_sector.ht0.pitch_radius * 0.01, color=color)
             self.ax.add_patch(ctr_circ)  # type: ignore[attr-defined]
@@ -587,21 +588,19 @@ class GearsApp(Tk):
             xy_lims = merge_xy_lims(*xy_lims, xy_lims_[0] + ctr_x, xy_lims_[1], xy_lims_[2] + ctr_x, xy_lims_[3])
             setattr(self, f'tooth{i}', tooth)
             setattr(self, f'gear_sector{i}', gear_sector)
-            setattr(self, f'rotating_gear_sector{i}', iter(gear_sector))
         xy_lims = upd_xy_lims(-self.tooth0.pitch_radius, self.tooth1.pitch_radius, *xy_lims)
 
+        # Action lines and contact points setup
+        self.transmission = Transmission(self.tooth0, self.tooth1)
+
         # Rack setup
-        self.transmission = Transmission(self.tooth0, self.tooth1, step_cnt=self.step_cnt)
-        self.transiter = iter(self.transmission)
-        self.rack = Rack(step_cnt=self.step_cnt,
-                         module=self.inputs.module_val,
+        self.rack = Rack(module=self.inputs.module_val,
                          pressure_angle=self.inputs.pressure_angle_val,
                          ad_coef=self.tooth1.de_coef,
                          de_coef=self.tooth0.de_coef,
                          profile_shift_coef=self.inputs.profile_shift_coef_val)
         self.rack.set_smart_boundaries(self.tooth0, self.tooth1)
         xy_lims = merge_xy_lims(*xy_lims, *self.rack.get_limits())
-        self.rackiter = iter(self.rack)
 
         # Set plot limits, add margin
         min_x, min_y, max_x, max_y = xy_lims
@@ -639,15 +638,10 @@ class GearsApp(Tk):
 
     # Helpers
     def show_next_frame(self) -> None:
-        x_es, y_es = next(self.rotating_gear_sector0)
-        self.gear0data = np.vstack((x_es - self.tooth0.pitch_radius, y_es))
-        x_es, y_es = next(self.rotating_gear_sector1)
-        self.gear1data = np.vstack((x_es + self.tooth1.pitch_radius, y_es))
+        self.clock.inc()
         for i in range(2):
             self.show_gear(i)
-        self.contacts0_data, self.contacts1_data = next(self.transiter)
-        self.rack_data = next(self.rackiter)
-        self.toolbar.upd_frame_num(self.gear_sector0.i)
+        self.toolbar.upd_frame_num()
         self.show_contact_points()
         self.show_rack()
         self.after_id = self.after(self.delay_ms, self.show_next_frame)
@@ -661,6 +655,7 @@ class GearsApp(Tk):
     def reset(self) -> None:
         """Restore initial appearance"""
         self.active_mode = False
+        self.clock.reset()
         [patch.remove() for patch in self.ax.patches]  # type: ignore[attr-defined]
         [self.plot_data(line, [], []) for line in self.ax.lines]  # type: ignore[attr-defined, arg-type, func-returns-value] # noqa: E501
         self.toolbar.reset_state()

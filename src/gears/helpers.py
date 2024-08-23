@@ -1,5 +1,8 @@
 import re
 from numbers import Number
+from typing import Generic
+from typing import Type
+from typing import TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -113,3 +116,50 @@ def seedrange(st: float, en: float, seed: float, step: float) -> npt.NDArray:
 
 def get_unit_vector(vec: npt.NDArray) -> npt.NDArray:
     return vec / np.linalg.norm(vec)  # type: ignore[attr-defined]
+
+
+def bool_to_sign(bool_val: bool | int) -> int:
+    """
+    Turns bool value into sign.
+
+    Args:
+        bool_val: Can be True, False, 0 or 1
+
+    Returns:
+        1 if bool_val = True, else -1
+    """
+    return bool_val * 2 - 1
+
+
+T = TypeVar('T')
+
+
+class Singleton(type, Generic[T]):
+    _instances: dict[Type[T], T] = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in Singleton._instances:
+            Singleton._instances[cls] = super().__call__(*args, **kwargs)
+        return Singleton._instances[cls]
+
+
+class Clock(metaclass=Singleton):
+    def __init__(self):
+        self.step_cnt = 1
+        self.i = 0
+
+    def set_step_cnt(self, step_cnt: int):
+        self.step_cnt = step_cnt
+
+    def reset(self):
+        self.i = self.step_cnt - 1
+
+    def inc(self):
+        self.i = (self.i + 1) % self.step_cnt
+
+    def dec(self):
+        self.i = (self.i + self.step_cnt - 1) % self.step_cnt
+
+    @property
+    def progress(self):
+        return self.i / self.step_cnt

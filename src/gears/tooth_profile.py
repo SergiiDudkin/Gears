@@ -1,7 +1,6 @@
 from typing import Any
 from typing import Callable
 from typing import cast
-from typing import Iterator
 
 import numpy as np
 import numpy.typing as npt
@@ -17,6 +16,8 @@ from .gear_params import GearParams
 from .gear_params import STANDARD_ADDENDUM_COEF
 from .gear_params import STANDARD_DEDENDUM_COEF
 from .gear_params import STANDARD_PRESSURE_ANGLE
+from .helpers import bool_to_sign
+from .helpers import Clock
 from .helpers import get_unit_vector
 from .helpers import linecirc_intersec
 from .helpers import lineline_intersec
@@ -249,16 +250,14 @@ class HalfTooth(GearParams):
 
 
 class GearSector:
-    def __init__(self, halftooth0: HalfTooth, halftooth1: HalfTooth, step_cnt: int = 100,
-                 sector: tuple[float, float] = (0, np.pi), rot_ang: float = 0, is_acw: bool = False) -> None:
+    def __init__(self, halftooth0: HalfTooth, halftooth1: HalfTooth, sector: tuple[float, float] = (0, np.pi),
+                 rot_ang: float = 0, is_acw: bool = False) -> None:
         self.ht0 = halftooth0
         self.ht1 = halftooth1
-        self.step_cnt = step_cnt
         self.sec_st, self.sec_en = sector
         self.rot_ang = rot_ang
-        self.is_acw = is_acw
-
-        self.i = self.step_cnt - 1
+        self.dir = bool_to_sign(is_acw)
+        self.clock = Clock()
         self._build_full_tooth()
 
     def _build_full_tooth(self) -> None:
@@ -339,12 +338,9 @@ class GearSector:
             pt_idx = -1 + is_en
         return tooth[:, :pt_idx] if is_en else tooth[:, pt_idx:]
 
-    def __iter__(self) -> Iterator[npt.NDArray]:
-        ang_step = self.ht0.tooth_angle / self.step_cnt
-        dir_ = self.is_acw * 2 - 1  # Bool to sign
-        while True:
-            self.i = (self.i + 1) % self.step_cnt
-            yield self.get_sector_profile(self.sec_st, self.sec_en, (ang_step * self.i + self.rot_ang) * dir_)
+    def get_data(self) -> npt.NDArray:
+        ang_step = self.ht0.tooth_angle / self.clock.step_cnt
+        return self.get_sector_profile(self.sec_st, self.sec_en, (ang_step * self.clock.i + self.rot_ang) * self.dir)
 
     def get_limits(self) -> tuple[float, float, float, float]:
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
@@ -359,17 +355,16 @@ class GearSector:
 
 
 class Transmission:
-    def __init__(self, tooth0: HalfTooth, tooth1: HalfTooth, step_cnt: int) -> None:
+    def __init__(self, tooth0: HalfTooth, tooth1: HalfTooth) -> None:
         self.tooth0 = tooth0
         self.tooth1 = tooth1
-        self.step_cnt = step_cnt
-        self.i = self.step_cnt - 1
         self.action_line0data = self.get_action_line()
         self.action_line1data = np.array([[self.action_line0data[0][1], self.action_line0data[0][0]],
                                           [-self.action_line0data[1][1], -self.action_line0data[1][0]]])
         self.base_step = self.tooth0.base_diameter * np.pi / self.tooth0.tooth_num
         self.ave_contact_points = np.linalg.norm(self.action_line0data[:, 1] -  # type: ignore[attr-defined]
                                                  self.action_line0data[:, 0]) / self.base_step
+        self.clock = Clock()
 
     def get_action_line(self) -> npt.NDArray:
         prv_x, prv_y = rotate(0, 1, self.tooth0.pressure_angle)
@@ -400,12 +395,10 @@ class Transmission:
         y_es = pt_range * uv[1]
         return np.vstack((x_es, y_es))  # [[x_es...], [y_es...]]
 
-    def __iter__(self) -> Iterator[tuple[npt.NDArray, npt.NDArray]]:
-        while True:
-            self.i = (self.i + 1) % self.step_cnt
-            contacts0_data = self.get_contact_points(0, self.i / self.step_cnt - self.tooth0.shift_percent)
-            contacts1_data = self.get_contact_points(1, self.i / self.step_cnt - self.tooth1.shift_percent + 0.5)
-            yield contacts0_data, contacts1_data
+    def get_data(self) -> tuple[npt.NDArray, npt.NDArray]:
+        contacts0_data = self.get_contact_points(0, self.clock.progress - self.tooth0.shift_percent)
+        contacts1_data = self.get_contact_points(1, self.clock.progress - self.tooth1.shift_percent + 0.5)
+        return contacts0_data, contacts1_data
 
     def __str__(self) -> str:
         return f'Average contact points number = {sci_round(self.ave_contact_points, 6)}\n'
@@ -414,10 +407,9 @@ class Transmission:
 class Rack:
     """Animated rack"""
 
-    def __init__(self, step_cnt: int, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
+    def __init__(self, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
                  ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF,
                  profile_shift_coef: float = 0) -> None:
-        self.step_cnt = step_cnt
         self.circular_pitch = module * np.pi
         self.dedendum = de_coef * module
         self.addendum = ad_coef * module
@@ -427,7 +419,7 @@ class Rack:
         y_proj_ad = (self.addendum - profile_shift) * tan_pressure_angle
         self.seeds = [y_proj_de - self.circular_pitch / 2, -y_proj_de, y_proj_ad, -y_proj_ad + self.circular_pitch / 2]
         self.x_vals = np.array([-self.dedendum, -self.dedendum, self.addendum, self.addendum])
-        self.i = self.step_cnt - 1
+        self.clock = Clock()
 
         # Set default boundaries
         self.st = -self.circular_pitch * 2
@@ -459,35 +451,33 @@ class Rack:
         """
         return -self.dedendum, self.st, self.addendum, self.en
 
-    def __iter__(self) -> Iterator[npt.NDArray]:
-        while True:
-            # Generate y values within the range
-            self.i = (self.i + 1) % self.step_cnt
-            progress = -self.i / self.step_cnt * self.circular_pitch
-            pt_sets = [seedrange(self.st - self.circular_pitch, self.en + self.circular_pitch,
-                                 seed + progress, self.circular_pitch) for seed in self.seeds]
+    def get_data(self) -> npt.NDArray:
+        # Generate y values within the range
+        pt_sets = [seedrange(self.st - self.circular_pitch, self.en + self.circular_pitch,
+                             seed - self.clock.progress * self.circular_pitch, self.circular_pitch)
+                   for seed in self.seeds]
 
-            length = max([len(pt_set) for pt_set in pt_sets])
+        length = max([len(pt_set) for pt_set in pt_sets])
 
-            # Augment with NaNs, and convert the list of arrays into 2d array.
-            pt_sets_arr = np.array([pt_set if len(pt_set) == length else np.append(pt_set, np.nan)
-                                   for pt_set in pt_sets])
+        # Augment with NaNs, and convert the list of arrays into 2d array.
+        pt_sets_arr = np.array([pt_set if len(pt_set) == length else np.append(pt_set, np.nan)
+                                for pt_set in pt_sets])
 
-            # Sort sub arrays
-            rot_val = -np.argmin(pt_sets_arr[:, 0])
-            y_es = np.transpose(np.roll(pt_sets_arr, rot_val, axis=0)).flatten()
+        # Sort sub arrays
+        rot_val = -np.argmin(pt_sets_arr[:, 0])
+        y_es = np.transpose(np.roll(pt_sets_arr, rot_val, axis=0)).flatten()
 
-            # Masking the values
-            mask = ~np.isnan(y_es)  # Mask to reject NaNs and extra values
-            x_es = np.tile(np.roll(self.x_vals, rot_val), length)[mask]
-            y_es = y_es[mask]
+        # Masking the values
+        mask = ~np.isnan(y_es)  # Mask to reject NaNs and extra values
+        x_es = np.tile(np.roll(self.x_vals, rot_val), length)[mask]
+        y_es = y_es[mask]
 
-            # Stripping extra length
-            data = np.vstack((x_es, y_es))
-            i_st = np.searchsorted(y_es, self.st, side='right')
-            i_en = np.searchsorted(y_es, self.en)
-            data[:, i_st - 1] = lineline_intersec(x_es[i_st - 1], y_es[i_st - 1], x_es[i_st], y_es[i_st],
-                                                  0, self.st, 1, self.st)
-            data[:, i_en] = lineline_intersec(x_es[i_en - 1], y_es[i_en - 1], x_es[i_en], y_es[i_en],
-                                              0, self.en, 1, self.en)
-            yield data[:, i_st - 1: i_en + 1]
+        # Stripping extra length
+        data = np.vstack((x_es, y_es))
+        i_st = np.searchsorted(y_es, self.st, side='right')
+        i_en = np.searchsorted(y_es, self.en)
+        data[:, i_st - 1] = lineline_intersec(x_es[i_st - 1], y_es[i_st - 1], x_es[i_st], y_es[i_st],
+                                              0, self.st, 1, self.st)
+        data[:, i_en] = lineline_intersec(x_es[i_en - 1], y_es[i_en - 1], x_es[i_en], y_es[i_en],
+                                          0, self.en, 1, self.en)
+        return data[:, i_st - 1: i_en + 1]

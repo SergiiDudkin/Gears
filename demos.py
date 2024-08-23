@@ -1,26 +1,34 @@
-import numpy as np
-
-from src.gears import angle_vec
-from src.gears import lineline_intersec
-from src.gears import rotate
-from src.gears import seedrange
-
-
-print(lineline_intersec(1, 0, 2, 0, 0, 1, 1, 1))
-
+# import numpy as np
+#
+# from src.gears import angle_vec
+# from src.gears import Clock, SubSingleton, Singleton
+# from src.gears import lineline_intersec
+# from src.gears import rotate
+# from src.gears import seedrange
+# a = Clock()
+# b = Clock()
+# a.inc()
+# a.inc()
+# print(a.i, b.i)
+# print(a is b)
+#
+# c = SubSingleton()
+# print(c.i)
+# print(a.i, b.i)
+# print(dir(c))
+# print(dir(Singleton))
+# print(Singleton._instances)
+# d = SubSingleton()
+# print(lineline_intersec(1, 0, 2, 0, 0, 1, 1, 1))
 # print(seedrange(-23.4, 67.5, 54.7, 3))
 # print(seedrange(2.1, 2.5, 2.6, 2))
 # print(seedrange(10, 1, 4, 3))
 # res = seedrange(23.5, 79.1, 53.4, 4.7)
 # print(res[np.argmin(np.abs(res - 53.5))])
-
 # angle = angle_vec(np.array([1, 0]), np.array([-1, 0])) / np.pi
 # print(angle)
-
 # vec = rotate(1, 0, np.pi / 2)
 # print(vec)
-
-
 # import numpy as np
 # from curves import epitrochoid
 # from curves import epitrochoid_flat
