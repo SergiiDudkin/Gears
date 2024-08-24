@@ -33,7 +33,7 @@ from .transforms import rotate
 from .transforms import stack_curves
 from .transforms import upd_xy_lims
 
-STEP = 0.1
+RESOLUTION = 0.1
 TOLERANCE = 0.1
 
 
@@ -42,14 +42,14 @@ class HalfTooth(GearParams):
 
     min_r_cont: float  # Min radius where the involute-involute contact with the cutter takes place
 
-    def __init__(self, tooth_num: int, module: float, cutter_teeth_num: int = 0,
-                 pressure_angle: float = STANDARD_PRESSURE_ANGLE, ad_coef: float = STANDARD_ADDENDUM_COEF,
-                 de_coef: float = STANDARD_DEDENDUM_COEF, step: float = STEP, tolerance: float = TOLERANCE,
-                 profile_shift_coef: float = 0) -> None:
+    def __init__(self, tooth_num: int, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
+                 ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF,
+                 profile_shift_coef: float = 0, cutter_teeth_num: int = 0, resolution: float = RESOLUTION,
+                 tolerance: float = TOLERANCE) -> None:
         super().__init__(tooth_num, module, pressure_angle, ad_coef, de_coef)
         self.cutter_teeth_num = cutter_teeth_num
         self.profile_shift_coef = profile_shift_coef
-        self.step = step
+        self.resolution = resolution
         self.tolerance = tolerance
 
         self.is_rack = not cutter_teeth_num
@@ -101,7 +101,7 @@ class HalfTooth(GearParams):
         if self.is_tooth_undercut:
             involute_t_min, epitrochoid_t_max, self.min_r_cont = self._find_involute_epitrochoid_intersection()
         else:
-            involute_t_min, epitrochoid_t_max = self._find_involute_epitrochoid_contact(invol_epitr_rad)
+            involute_t_min, epitrochoid_t_max = self._find_involute_epitrochoid_contact_t_vals(invol_epitr_rad)
             self.min_r_cont = invol_epitr_rad
 
             # Gather limits of curves
@@ -133,7 +133,7 @@ class HalfTooth(GearParams):
         Finds the transition point between involute and epitrochoid_flat.
 
         Returns:
-            Radius and angle in polar coordinate system
+            Radius and angle in polar coordinate system.
         """
         invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
         invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / invol_epitr_rad) + self.pressure_angle
@@ -141,10 +141,10 @@ class HalfTooth(GearParams):
 
     def _calc_invol_epitr(self) -> tuple[float, float]:
         """
-        Finds the transition point between involute and epitrochoid.
+        Finds the transition point between involute and epitrochoid (invalid in case of tooth undercut).
 
         Returns:
-            Radius and angle in polar coordinate system
+            Radius and angle in polar coordinate system.
         """
         # Solve the first triangle using the law of sines
         b = self.cutter_teeth_num * self.module / 2  # Cutting gear pitch radius
@@ -164,7 +164,16 @@ class HalfTooth(GearParams):
         invol_epitr_rad, invol_epitr_angle = a_, beta_
         return invol_epitr_rad, invol_epitr_angle
 
-    def _find_involute_epitrochoid_contact(self, invol_epitr_rad: float) -> tuple[float, float]:
+    def _find_involute_epitrochoid_contact_t_vals(self, invol_epitr_rad: float) -> tuple[float, float]:
+        """
+        Finds values of t param from the given the radius.
+
+        Args:
+            invol_epitr_rad: Radial coordinate of involute-epitrochoid contact.
+
+        Returns:
+            Limits, i.e. involute t min value, and epitrochoid t max value.
+        """
         involute_t_min = involute_angrad(invol_epitr_rad, 0, 1, **self.involute_params)[3]
         epitrochoid_t_max = self.my_epitrochoid_angrad(invol_epitr_rad, 0, -0.1, **self.epitrochoid_params)[3]
         return involute_t_min, epitrochoid_t_max
@@ -190,12 +199,14 @@ class HalfTooth(GearParams):
         return involute_t_min, epitrochoid_t_max, r_curr
 
     def _build_half_tooth(self) -> None:
-        points_involute = equidistant(involute, self.involute_lims, self.step, self.tolerance, **self.involute_params)
+        points_involute = equidistant(involute, self.involute_lims, self.resolution,
+                                      self.tolerance, **self.involute_params)
         points_epitrochoid = equidistant(self.my_epitrochoid, self.epitrochoid_lims,
-                                         self.step, self.tolerance, **self.epitrochoid_params)
-        points_outside = equidistant(circle, self.outside_circle_lims, self.step,
+                                         self.resolution, self.tolerance, **self.epitrochoid_params)
+        points_outside = equidistant(circle, self.outside_circle_lims, self.resolution,
                                      self.tolerance, **self.outside_circle_params)
-        points_root = equidistant(circle, self.root_circle_lims, self.step, self.tolerance, **self.root_circle_params)
+        points_root = equidistant(circle, self.root_circle_lims, self.resolution,
+                                  self.tolerance, **self.root_circle_params)
 
         self.half_tooth_profile = stack_curves(points_root, points_epitrochoid, points_involute, points_outside)
 
@@ -250,6 +261,8 @@ class HalfTooth(GearParams):
 
 
 class GearSector:
+    """Builds animated gear sector."""
+
     def __init__(self, halftooth0: HalfTooth, halftooth1: HalfTooth, sector: tuple[float, float] = (0, np.pi),
                  rot_ang: float = 0, is_acw: bool = False) -> None:
         self.ht0 = halftooth0
@@ -355,6 +368,8 @@ class GearSector:
 
 
 class Transmission:
+    """Computes action lines and involute-involute contact points"""
+
     def __init__(self, tooth0: HalfTooth, tooth1: HalfTooth) -> None:
         self.tooth0 = tooth0
         self.tooth1 = tooth1

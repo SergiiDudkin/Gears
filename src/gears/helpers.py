@@ -135,6 +135,8 @@ T = TypeVar('T')
 
 
 class Singleton(type, Generic[T]):
+    """Singleton meta class"""
+
     _instances: dict[Type[T], T] = {}
 
     def __call__(cls, *args, **kwargs):
@@ -144,6 +146,8 @@ class Singleton(type, Generic[T]):
 
 
 class Clock(metaclass=Singleton):
+    """Global clock"""
+
     def __init__(self):
         self.step_cnt = 1
         self.i = 0

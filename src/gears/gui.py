@@ -65,6 +65,8 @@ class State(Enum):
 
 
 class ToolbarPlayer(NavigationToolbar2Tk):
+    """Child class with extra buttons to support animation."""
+
     def __init__(self, canvas: FigureCanvasTkAgg, window: Widget, callback_play: Callable[[], None],
                  callback_next_frame: Callable[[], None], callback_pause: Callable[[], None],
                  callback_resume: Callable[[], None], callback_stop: Callable[[], None]) -> None:
@@ -169,6 +171,7 @@ class SpinboxValid(Spinbox):
         self.input_callback()
 
 
+# User input validators
 def check_pos_int(strvar: str) -> bool:
     try:
         num = int(strvar)
@@ -215,6 +218,8 @@ def get_entry_valid_recur(widget: Widget) -> list[EntryValid | SpinboxValid]:
 
 
 class InputFrame(Frame):
+    """Input frame. The component of gear app main window."""
+
     def __init__(self, parent: Widget) -> None:
         super().__init__(parent)
         self.pack(side=LEFT, fill=Y)
@@ -415,7 +420,7 @@ class GearsApp(Tk):
         # Plots frame
         self.plots_frame = Frame(notebook)
         self.plots_frame.pack(side=LEFT, fill=BOTH, expand=True)
-        notebook.add(self.plots_frame, text='Simulation')
+        notebook.add(self.plots_frame, text='Animation')
 
         # Text frame
         self.text_frame = Frame(notebook)
@@ -557,8 +562,9 @@ class GearsApp(Tk):
                               pressure_angle=self.inputs.pressure_angle_val,
                               ad_coef=self.inputs.ad_coef_vals[i],
                               de_coef=self.inputs.de_coef_vals[i],
+                              profile_shift_coef=self.inputs.profile_shift_coef_val * x_sign,
                               cutter_teeth_num=self.inputs.cutter_teeth_nums[i],
-                              profile_shift_coef=self.inputs.profile_shift_coef_val * x_sign)
+                              resolution=self.inputs.module_val * 0.01)
             gear_sector = GearSector(tooth, tooth, sector=sector, rot_ang=rot_ang, is_acw=is_acw)
             ctr_x = tooth.pitch_radius * x_sign
             ctr_circ = Circle((ctr_x, 0), gear_sector.ht0.pitch_radius * 0.01, color=color)
