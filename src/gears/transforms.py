@@ -6,7 +6,21 @@ import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import interp1d  # type: ignore[import-untyped]
 
+from .helpers import stack_curves
+
 ArrOrNumG = TypeVar('ArrOrNumG', np.ndarray, float)
+
+
+def cartesian_to_polar(x: ArrOrNumG, y: ArrOrNumG) -> tuple[ArrOrNumG, ArrOrNumG]:
+    ang = np.remainder(np.arctan2(y, x), np.pi * 2)
+    rad = np.linalg.norm([x, y])  # type: ignore[attr-defined]
+    return ang, rad
+
+
+def polar_to_cartesian(ang: ArrOrNumG, rad: ArrOrNumG) -> tuple[ArrOrNumG, ArrOrNumG]:
+    x = rad * np.cos(ang)
+    y = rad * np.sin(ang)
+    return x, y
 
 
 def mirror(poi: npt.NDArray, seg_st: npt.NDArray, seg_en: npt.NDArray) -> npt.NDArray:
@@ -27,33 +41,19 @@ def mirror(poi: npt.NDArray, seg_st: npt.NDArray, seg_en: npt.NDArray) -> npt.ND
     return mirror_poi
 
 
-def angle_vec(vec0: npt.NDArray, vec1: npt.NDArray) -> npt.NDArray:  # Not used here!
+def rotate(x: ArrOrNumG, y: ArrOrNumG, angle: float) -> npt.NDArray:
     """
-    Returns the angle between two vectors. If the vector 0 is rotated ACW to get the same direction as vector 1, then
-    the angle is positive (negative otherwise).
+    Rotate points around the origin.
 
     Args:
-        vec0: Radius vector 0
-        vec1: Radius vector 1
+        x: Radius-vector, x-value.
+        y: Radius-vector, y-value.
+        angle: Rotation angle, ACW, in radians.
 
     Returns:
-        Angle between two vectors, in radians. -1 < angle <= 1.
+        Rotated radius-vector.
     """
-    y = np.linalg.det(np.vstack((vec0, vec1)))  # type: ignore[attr-defined]
-    x = np.sum(vec0 * vec1)
-    return np.arctan2(y, x)
-
-
-def cartesian_to_polar(x: ArrOrNumG, y: ArrOrNumG) -> tuple[ArrOrNumG, ArrOrNumG]:
-    ang = np.remainder(np.arctan2(y, x), np.pi * 2)
-    rad = np.linalg.norm([x, y])  # type: ignore[attr-defined]
-    return ang, rad
-
-
-def polar_to_cartesian(ang: ArrOrNumG, rad: ArrOrNumG) -> tuple[ArrOrNumG, ArrOrNumG]:
-    x = rad * np.cos(ang)
-    y = rad * np.sin(ang)
-    return x, y
+    return np.array([x * np.cos(angle) - y * np.sin(angle), x * np.sin(angle) + y * np.cos(angle)])
 
 
 def make_angrad_func(func: Callable) -> Callable:
@@ -149,25 +149,6 @@ def equidistant(func: Callable, t_lims: tuple[float, float], step: float, tolera
     return points
 
 
-def stack_curves(*curves) -> npt.NDArray:
-    return np.hstack(tuple([line[:, 1:] if idx else line for idx, line in enumerate(curves)]))
-
-
-def rotate(x: ArrOrNumG, y: ArrOrNumG, angle: float) -> npt.NDArray:
-    """
-    Rotate points around the origin.
-
-    Args:
-        x: Radius-vector, x-value.
-        y: Radius-vector, y-value.
-        angle: Rotation angle, ACW, in radians.
-
-    Returns:
-        Rotated radius-vector.
-    """
-    return np.array([x * np.cos(angle) - y * np.sin(angle), x * np.sin(angle) + y * np.cos(angle)])
-
-
 def populate_circ(in_x: npt.NDArray, in_y: npt.NDArray, num: int) -> npt.NDArray:
     """
     Multiply points and place them around the origin.
@@ -183,22 +164,3 @@ def populate_circ(in_x: npt.NDArray, in_y: npt.NDArray, num: int) -> npt.NDArray
     angle_step = 2 * np.pi / num
     curves = [rotate(in_x, in_y, angle_step * i) for i in range(num)]
     return stack_curves(*curves)
-
-
-def is_within_ang(q_ang: float, st_ang: float, en_ang: float) -> bool:
-    operator = np.bitwise_and if st_ang < en_ang else np.bitwise_or
-    return operator(st_ang <= q_ang, q_ang < en_ang)  # type: ignore[operator]
-
-
-def upd_xy_lims(x: float, y: float, min_x: float, min_y: float, max_x: float, max_y: float) -> tuple[float, float,
-                                                                                                     float, float]:
-    min_x = min(min_x, x)
-    min_y = min(min_y, y)
-    max_x = max(max_x, x)
-    max_y = max(max_y, y)
-    return min_x, min_y, max_x, max_y
-
-
-def merge_xy_lims(min_x0: float, min_y0: float, max_x0: float, max_y0: float, min_x1: float, min_y1: float,
-                  max_x1: float, max_y1: float) -> tuple[float, float, float, float]:
-    return min(min_x0, min_x1), min(min_y0, min_y1), max(max_x0, max_x1), max(max_y0, max_y1)

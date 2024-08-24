@@ -16,22 +16,22 @@ from .gear_params import GearParams
 from .gear_params import STANDARD_ADDENDUM_COEF
 from .gear_params import STANDARD_DEDENDUM_COEF
 from .gear_params import STANDARD_PRESSURE_ANGLE
+from .geometry import get_unit_vector
+from .geometry import is_within_ang
+from .geometry import linecirc_intersec
+from .geometry import lineline_intersec
 from .helpers import bool_to_sign
 from .helpers import Clock
-from .helpers import get_unit_vector
-from .helpers import linecirc_intersec
-from .helpers import lineline_intersec
 from .helpers import sci_round
 from .helpers import seedrange
+from .helpers import stack_curves
+from .helpers import upd_xy_lims
 from .transforms import cartesian_to_polar
 from .transforms import equidistant
-from .transforms import is_within_ang
 from .transforms import mirror
 from .transforms import polar_to_cartesian
 from .transforms import populate_circ
 from .transforms import rotate
-from .transforms import stack_curves
-from .transforms import upd_xy_lims
 
 RESOLUTION = 0.1
 TOLERANCE = 0.1

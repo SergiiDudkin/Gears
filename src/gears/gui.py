@@ -49,12 +49,12 @@ from matplotlib.pyplot import Circle  # type: ignore[attr-defined]
 from .helpers import bool_to_sign
 from .helpers import Clock
 from .helpers import indentate
+from .helpers import merge_xy_lims
+from .helpers import upd_xy_lims
 from .tooth_profile import GearSector
 from .tooth_profile import HalfTooth
 from .tooth_profile import Rack
 from .tooth_profile import Transmission
-from .transforms import merge_xy_lims
-from .transforms import upd_xy_lims
 
 
 class State(Enum):
