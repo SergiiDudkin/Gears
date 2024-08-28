@@ -371,6 +371,36 @@ class InputFrame(Frame):
         return float(self.profile_shift_coef.strvar.get())
 
 
+class MenuBar(Menu):
+    def __init__(self, parent: Tk, callback_gear: Callable[[int], None], callback_action_lines: Callable[[], None],
+                 callback_contact_points: Callable[[], None], callback_rack: Callable[[], None]):
+        super().__init__(parent, relief=FLAT, bg='gray88')
+
+        viewmenu = Menu(self, tearoff=0)
+
+        # Declare variables
+        self.has_gears = (BooleanVar(self, True), BooleanVar(self, True))
+        self.has_action_line = BooleanVar(self, False)
+        self.has_contact_pts = BooleanVar(self, False)
+        self.has_rack = BooleanVar(self, False)
+
+        # Add buttons
+        viewmenu.add_checkbutton(label='Gear A', onvalue=True, offvalue=False, variable=self.has_gears[0],
+                                 command=lambda: callback_gear(0))
+        viewmenu.add_checkbutton(label='Gear B', onvalue=True, offvalue=False, variable=self.has_gears[1],
+                                 command=lambda: callback_gear(1))
+        viewmenu.add_checkbutton(label='Action line', onvalue=True, offvalue=False, variable=self.has_action_line,
+                                 command=callback_action_lines)
+        viewmenu.add_checkbutton(label='Contact points', onvalue=True, offvalue=False, variable=self.has_contact_pts,
+                                 command=callback_contact_points)
+        viewmenu.add_checkbutton(label='Rack', onvalue=True, offvalue=False, variable=self.has_rack,
+                                 command=callback_rack)
+
+        # Mount
+        self.add_cascade(label='View', menu=viewmenu)
+        parent.config(menu=self)
+
+
 class GearsApp(Tk):
     """Gears app with GUI"""
 
@@ -388,24 +418,8 @@ class GearsApp(Tk):
         self.resizable(True, True)
 
         # Menu bar
-        menubar = Menu(self, relief=FLAT, bg='gray88')
-        viewmenu = Menu(menubar, tearoff=0)
-        self.has_gears = (BooleanVar(self, True), BooleanVar(self, True))
-        self.has_action_line = BooleanVar(self, False)
-        self.has_contact_pts = BooleanVar(self, False)
-        self.has_rack = BooleanVar(self, False)
-        viewmenu.add_checkbutton(label='Gear A', onvalue=True, offvalue=False, variable=self.has_gears[0],
-                                 command=lambda: self.show_gear(0))
-        viewmenu.add_checkbutton(label='Gear B', onvalue=True, offvalue=False, variable=self.has_gears[1],
-                                 command=lambda: self.show_gear(1))
-        viewmenu.add_checkbutton(label='Action line', onvalue=True, offvalue=False, variable=self.has_action_line,
-                                 command=self.show_action_lines)
-        viewmenu.add_checkbutton(label='Contact points', onvalue=True, offvalue=False, variable=self.has_contact_pts,
-                                 command=self.show_contact_points)
-        viewmenu.add_checkbutton(label='Rack', onvalue=True, offvalue=False, variable=self.has_rack,
-                                 command=self.show_rack)
-        menubar.add_cascade(label='View', menu=viewmenu)
-        self.config(menu=menubar)
+        self.menubar = MenuBar(self, callback_gear=self.show_gear, callback_action_lines=self.show_action_lines,
+                               callback_contact_points=self.show_contact_points, callback_rack=self.show_rack)
 
         # Frames
         main_frame = Frame(self)
@@ -450,13 +464,13 @@ class GearsApp(Tk):
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plots_frame)
         self.ax.plot([], [], color='b', linewidth=1)  # type: ignore[call-arg]
         self.ax.plot([], [], color='r', linewidth=1)  # type: ignore[call-arg]
-        self.ax.plot([], [], color='k', linewidth=1)  # type: ignore[call-arg]
-        self.ax.plot([], [], color='k', linewidth=1)  # type: ignore[call-arg]
+        self.ax.plot([], [], color='grey', linewidth=1)  # type: ignore[call-arg]
+        self.ax.plot([], [], color='grey', linewidth=1)  # type: ignore[call-arg]
         self.ax.plot([], [], marker='o', markersize=5, mec='g', mfc=(1, 1, 1, 0),
                      linestyle='None')  # type: ignore[call-arg, arg-type]
         self.ax.plot([], [], marker='o', markersize=5, mec='m', mfc=(1, 1, 1, 0),
                      linestyle='None')  # type: ignore[call-arg, arg-type]
-        self.ax.plot([], [], color='c', linewidth=1)  # type: ignore[call-arg]
+        self.ax.plot([], [], color='brown', linewidth=1)  # type: ignore[call-arg]
         self.ax.set_xlim((0, 1))  # type: ignore[arg-type]
         self.ax.set_ylim((0, 1))  # type: ignore[arg-type]
         self.toolbar = ToolbarPlayer(self.canvas, self.plots_frame, self.play, self.next_frame, self.pause,
@@ -489,7 +503,7 @@ class GearsApp(Tk):
             None.
         """
         if self.active_mode:
-            flag = self.has_gears[idx].get()
+            flag = self.menubar.has_gears[idx].get()
             self.ax.patches[idx].set_visible(flag)  # type: ignore[attr-defined]
             data = self.gear_sectors[idx].get_data()
             data[0] += bool_to_sign(idx) * self.teeth[idx].pitch_radius
@@ -503,7 +517,7 @@ class GearsApp(Tk):
         Returns:
             None.
         """
-        flag = self.has_action_line.get() and self.active_mode
+        flag = self.menubar.has_action_line.get() and self.active_mode and hasattr(self, 'transmission')
         self.plot_data(self.ax.lines[2],  # type: ignore[attr-defined]
                        *(self.transmission.action_line0data if flag else np.array([[], []])))
         self.plot_data(self.ax.lines[3],  # type: ignore[attr-defined]
@@ -516,12 +530,11 @@ class GearsApp(Tk):
         Returns:
             None.
         """
-        flag = self.has_contact_pts.get() and self.active_mode
-        contacts_dir_data, contacts_rev_data = self.transmission.get_data()
+        flag = self.menubar.has_contact_pts.get() and self.active_mode and hasattr(self, 'transmission')
         self.plot_data(self.ax.lines[4],  # type: ignore[attr-defined]
-                       *(contacts_dir_data if flag else np.array([[], []])))
+                       *(self.transmission.get_data()[0] if flag else np.array([[], []])))
         self.plot_data(self.ax.lines[5],  # type: ignore[attr-defined]
-                       *(contacts_rev_data if flag else np.array([[], []])))
+                       *(self.transmission.get_data()[1] if flag else np.array([[], []])))
 
     def show_rack(self) -> None:
         """
@@ -530,7 +543,7 @@ class GearsApp(Tk):
         Returns:
             None.
         """
-        flag = self.has_rack.get() and self.active_mode
+        flag = self.menubar.has_rack.get() and self.active_mode
         self.plot_data(self.ax.lines[6],  # type: ignore[attr-defined]
                        *(self.rack.get_data() if flag else np.array([[], []])))
 
