@@ -199,18 +199,19 @@ class HalfTooth(GearParams):
         return involute_t_min, epitrochoid_t_max, r_curr
 
     def _build_half_tooth(self) -> None:
-        points_involute = equidistant(involute, self.involute_lims, self.resolution,
-                                      self.tolerance, **self.involute_params)
-        points_epitrochoid = equidistant(self.my_epitrochoid, self.epitrochoid_lims,
-                                         self.resolution, self.tolerance, **self.epitrochoid_params)
-        points_outside = equidistant(circle, self.outside_circle_lims, self.resolution,
-                                     self.tolerance, **self.outside_circle_params)
-        points_root = equidistant(circle, self.root_circle_lims, self.resolution,
-                                  self.tolerance, **self.root_circle_params)
+        self.points_involute = equidistant(involute, self.involute_lims, self.resolution, self.tolerance,
+                                           **self.involute_params)
+        self.points_epitrochoid = equidistant(self.my_epitrochoid, self.epitrochoid_lims, self.resolution,
+                                              self.tolerance, **self.epitrochoid_params)
+        self.points_outside = equidistant(circle, self.outside_circle_lims, self.resolution, self.tolerance,
+                                          **self.outside_circle_params)
+        self.points_root = equidistant(circle, self.root_circle_lims, self.resolution, self.tolerance,
+                                       **self.root_circle_params)
 
-        self.half_tooth_profile = stack_curves(points_root, points_epitrochoid, points_involute, points_outside)
+        self.half_tooth_profile = stack_curves(self.points_root, self.points_epitrochoid, self.points_involute,
+                                               self.points_outside)
 
-    def get_curves_data(self) -> dict[str, dict[str, Any]]:
+    def get_curves_equations(self) -> dict[str, dict[str, Any]]:
         return {
             'involute': {
                 'x': 'r * (np.cos(t_) + t * np.sin(t_))',
@@ -245,7 +246,7 @@ class HalfTooth(GearParams):
     def __str__(self) -> str:
         output = super().__str__()
         output += f'\ntooth undercut = {self.is_tooth_undercut}'
-        curves_data = self.get_curves_data()
+        curves_data = self.get_curves_equations()
         for curve_name in ('involute', 'epitrochoid', 'outside circle', 'root circle'):
             curve = curves_data[curve_name]
             curve_str = (

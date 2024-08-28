@@ -20,7 +20,7 @@ class GearParams:
             module: Gear module, mm.
             pressure_angle: Pressure angle, rad.
             ad_coef: Addendum coefficient, i.e. addendum / module.
-            de_coef: Dendum coefficient, i.e. dendum / module.
+            de_coef: Dedendum coefficient, i.e. dendum / module.
         """
         self.tooth_num = tooth_num
         self.module = module
