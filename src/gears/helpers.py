@@ -1,5 +1,5 @@
 import re
-from numbers import Number
+from typing import cast
 from typing import Generic
 from typing import Type
 from typing import TypeVar
@@ -65,7 +65,7 @@ def seedrange(st: float, en: float, seed: float, step: float) -> npt.NDArray:
     return res
 
 
-def sci_round(num: Number, sig_fig: int = 1) -> float:
+def sci_round(num: float, sig_fig: int = 1) -> float:
     """
     Scientific round.
 
@@ -77,6 +77,20 @@ def sci_round(num: Number, sig_fig: int = 1) -> float:
         Rounded number.
     """
     return float(f'{num:.{sig_fig - 1}e}')
+
+
+def round_float_only(val: T, sig_fig: int = 1) -> T:
+    """
+    Rounds only the float type.
+
+    Args:
+        val: Number to round.
+        sig_fig: Number of significant digits.
+
+    Returns:
+        Rounded number.
+    """
+    return cast(T, sci_round(val, sig_fig)) if isinstance(val, float) else val
 
 
 def indentate(text: str) -> str:
@@ -92,6 +106,12 @@ def indentate(text: str) -> str:
     return re.sub(r'^', '\t', text, flags=re.M)
 
 
+def replace_batch(text: str, rep_tab: list[tuple[str, str]]) -> str:
+    for old, new in rep_tab:
+        text = text.replace(old, new)
+    return text
+
+
 def bool_to_sign(bool_val: bool | int) -> int:
     """
     Turns bool value into sign.
@@ -103,19 +123,6 @@ def bool_to_sign(bool_val: bool | int) -> int:
         1 if bool_val = True, else -1
     """
     return bool_val * 2 - 1
-
-
-def stack_curves(*curves) -> npt.NDArray:
-    """
-    Joins the sequence of curves.
-
-    Args:
-        *curves: A curve is 2d array of points [[x_es...], [y_es...]].
-
-    Returns:
-        Stacked curves. Terminal points of adjacent curves are supposed to be the same, so the duplicates are removed.
-    """
-    return np.hstack(tuple([line[:, 1:] if idx else line for idx, line in enumerate(curves)]))
 
 
 def upd_xy_lims(x: float, y: float, min_x: float, min_y: float, max_x: float, max_y: float) -> tuple[float, float,

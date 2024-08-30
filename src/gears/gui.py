@@ -135,40 +135,30 @@ class ToolbarPlayer(NavigationToolbar2Tk):
             self.play_btn.config(state=DISABLED)
 
 
-class EntryValid(Entry):
-    """General entry widget with validation. Validator func must be added as the 2nd argument."""
+class InputWidgetValidatorMixin():
+    """Mixin: validation support for input widgets."""
 
-    def __init__(self, parent, validator, **kwargs):
-        self.input_callback = parent.master.input_callback
+    def __init__(self, parent: Widget, input_callback: Callable[[], None], validator: Callable[[str], bool], **kwargs):
+        self.input_callback = input_callback
         self.validator = validator
         self.strvar = StringVar(parent)
         self.strvar.trace('w', self.entry_callback)
         kwargs['textvariable'] = self.strvar
-        super().__init__(parent, **kwargs)
+        super().__init__(parent, **kwargs)  # type: ignore[call-arg]
         self.entry_callback()
 
     def entry_callback(self, *args):
-        self.is_valid = self.validator(self.strvar.get())
+        self.is_valid = self.validator(self.strvar.get()) or self['state'] == DISABLED
         self['bg'] = 'lemon chiffon' if self.is_valid else '#fca7b8'
         self.input_callback()
 
 
-class SpinboxValid(Spinbox):
-    """General entry widget with validation. Validator func must be added as the 2nd argument."""
+class EntryValid(InputWidgetValidatorMixin, Entry):
+    """Entry widget with validation. Validator func must be added as the 2nd argument."""
 
-    def __init__(self, parent: Widget, validator, **kwargs):
-        self.input_callback = cast(InputFrame, parent.master).input_callback
-        self.validator = validator
-        self.strvar = StringVar(parent)
-        self.strvar.trace('w', self.entry_callback)
-        kwargs['textvariable'] = self.strvar
-        super().__init__(parent, **kwargs)
-        self.entry_callback()
 
-    def entry_callback(self, *args) -> None:
-        self.is_valid = self.validator(self.strvar.get())
-        self['bg'] = 'lemon chiffon' if self.is_valid else '#fca7b8'
-        self.input_callback()
+class SpinboxValid(InputWidgetValidatorMixin, Spinbox):
+    """Spinbox widget with validation. Validator func must be added as the 2nd argument."""
 
 
 # User input validators
@@ -232,12 +222,13 @@ class InputFrame(Frame):
         common_params_frame.columnconfigure(0, weight=1)
 
         Label(common_params_frame, text='Module').grid(row=0, column=0, padx=2, pady=2, sticky=W)
-        self.module = EntryValid(common_params_frame, check_pos_finite, width=6, justify='right')
+        self.module = EntryValid(common_params_frame, self.input_callback, check_pos_finite, width=6, justify='right')
         self.module.grid(row=0, column=1, padx=2, pady=2, sticky=E)
         self.module.insert(END, '10')
 
         Label(common_params_frame, text='Pressure angle').grid(row=1, column=0, padx=2, pady=2, sticky=W)
-        self.pressure_angle = EntryValid(common_params_frame, check_90_deg, width=6, justify='right')
+        self.pressure_angle = EntryValid(common_params_frame, self.input_callback, check_90_deg, width=6,
+                                         justify='right')
         self.pressure_angle.grid(row=1, column=1, padx=2, pady=2, sticky=E)
         self.pressure_angle.insert(END, '20')
 
@@ -250,7 +241,7 @@ class InputFrame(Frame):
         rb_frame.grid(row=5, column=0, columnspan=2, pady=2, sticky=W)
         common_params_frame.input_callback = self.input_callback  # type: ignore[attr-defined]
         Radiobutton(rb_frame, text='gear, ', variable=self.cutter, value=1, selectcolor='lemon chiffon').pack(side=LEFT)
-        self.cutter_tooth_num = EntryValid(rb_frame, check_pos_int, width=6, justify='right')
+        self.cutter_tooth_num = EntryValid(rb_frame, self.input_callback, check_pos_int, width=6, justify='right')
         self.cutter_tooth_num.pack(side=LEFT)
         self.cutter_tooth_num.insert(END, '18')
         Label(rb_frame, text=' teeth').pack(side=LEFT)
@@ -262,8 +253,9 @@ class InputFrame(Frame):
         Label(common_params_frame, text='Profile shift coef').grid(row=7, column=0, padx=2, pady=2, sticky=W)
         tcl_up_or_down = self.register(self.shift_callback)
         self.step = 0.02
-        self.profile_shift_coef = SpinboxValid(common_params_frame, check_abs_one, width=6, from_=-1e10, to=1e10,
-                                               increment=self.step, command=(tcl_up_or_down, '%d'), justify='right')
+        self.profile_shift_coef = SpinboxValid(common_params_frame, self.input_callback, check_abs_one, width=6,
+                                               from_=-1e10, to=1e10, increment=self.step,
+                                               command=(tcl_up_or_down, '%d'), justify='right')
         self.profile_shift_coef.grid(row=7, column=1, padx=2, pady=2, sticky=E)
         self.profile_shift_coef.strvar.set('0')
 
@@ -274,17 +266,17 @@ class InputFrame(Frame):
         params0_frame.columnconfigure(0, weight=1)
 
         Label(params0_frame, text='Number of teeth').grid(row=0, column=0, padx=2, pady=2, sticky=W)
-        self.tooth_num0 = EntryValid(params0_frame, check_pos_int, width=6, justify='right')
+        self.tooth_num0 = EntryValid(params0_frame, self.input_callback, check_pos_int, width=6, justify='right')
         self.tooth_num0.grid(row=0, column=1, padx=2, pady=2, sticky=E)
         self.tooth_num0.insert(END, '40')
 
         Label(params0_frame, text='Addendum').grid(row=1, column=0, padx=2, pady=2, sticky=W)
-        self.ad_coef0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
+        self.ad_coef0 = EntryValid(params0_frame, self.input_callback, check_pos_finite, width=6, justify='right')
         self.ad_coef0.grid(row=1, column=1, padx=2, pady=2, sticky=E)
         self.ad_coef0.insert(END, '1')
 
         Label(params0_frame, text='Dedendum').grid(row=2, column=0, padx=2, pady=2, sticky=W)
-        self.de_coef0 = EntryValid(params0_frame, check_pos_finite, width=6, justify='right')
+        self.de_coef0 = EntryValid(params0_frame, self.input_callback, check_pos_finite, width=6, justify='right')
         self.de_coef0.grid(row=2, column=1, padx=2, pady=2, sticky=E)
         self.de_coef0.insert(END, '1')
 
@@ -295,22 +287,22 @@ class InputFrame(Frame):
         params1_frame.columnconfigure(0, weight=1)
 
         Label(params1_frame, text='Number of teeth').grid(row=0, column=0, padx=2, pady=2, sticky=W)
-        self.tooth_num1 = EntryValid(params1_frame, check_pos_int, width=6, justify='right')
+        self.tooth_num1 = EntryValid(params1_frame, self.input_callback, check_pos_int, width=6, justify='right')
         self.tooth_num1.grid(row=0, column=1, padx=2, pady=2, sticky=E)
         self.tooth_num1.insert(END, '40')
 
         Label(params1_frame, text='Addendum').grid(row=1, column=0, padx=2, pady=2, sticky=W)
-        self.ad_coef1 = EntryValid(params1_frame, check_pos_finite, width=6, justify='right')
+        self.ad_coef1 = EntryValid(params1_frame, self.input_callback, check_pos_finite, width=6, justify='right')
         self.ad_coef1.grid(row=1, column=1, padx=2, pady=2, sticky=E)
         self.ad_coef1.insert(END, '1')
 
         Label(params1_frame, text='Dedendum').grid(row=2, column=0, padx=2, pady=2, sticky=W)
-        self.de_coef1 = EntryValid(params1_frame, check_pos_finite, width=6, justify='right')
+        self.de_coef1 = EntryValid(params1_frame, self.input_callback, check_pos_finite, width=6, justify='right')
         self.de_coef1.grid(row=2, column=1, padx=2, pady=2, sticky=E)
         self.de_coef1.insert(END, '1')
 
         self.input_fields = get_entry_valid_recur(self)
-        self.cutter_callback()
+        # self.cutter_callback()
 
     # Input callbacks
     def input_callback(self) -> None:
@@ -322,6 +314,8 @@ class InputFrame(Frame):
 
     def cutter_callback(self, *args) -> None:
         self.cutter_tooth_num.config(state=(NORMAL if self.cutter.get() == 1 else DISABLED))
+        self.cutter_tooth_num.entry_callback()
+        self.input_callback()
 
     def shift_callback(self, direction: str) -> None:
         self.profile_shift_coef.entry_callback()
@@ -364,7 +358,7 @@ class InputFrame(Frame):
         elif cutter_val == 1:
             return (int(self.cutter_tooth_num.get()),) * 2
         else:
-            return self.tooth_num_vals
+            return self.tooth_num_vals[::-1]
 
     @property
     def profile_shift_coef_val(self) -> float:
@@ -448,7 +442,7 @@ class GearsApp(Tk):
         txt_btn_frame.pack(side=BOTTOM, fill=X, pady=1)
         Button(txt_btn_frame, text='Save', width=6, command=self.save_text).pack(side=RIGHT)
 
-        self.txt = Text(msg_subframe, height=10, width=20, state='disabled')
+        self.txt = Text(msg_subframe, height=10, width=20, state=DISABLED)
         self.txt.config(tabs=tkfont.Font(font=self.txt['font']).measure('    '))
         yscrollbar = ttk.Scrollbar(msg_subframe, command=self.txt.yview)
         yscrollbar.pack(side=RIGHT, pady=2, fill=Y)
@@ -484,7 +478,7 @@ class GearsApp(Tk):
         self.contacts0_data: npt.NDArray = np.array([[], []])
         self.contacts1_data: npt.NDArray = np.array([[], []])
 
-        self.inputs.input_callback()
+        self.inputs.cutter_callback()
         self.delay_ms: int = 1
         self.clock = Clock()
         self.clock.set_step_cnt(100)
@@ -615,12 +609,16 @@ class GearsApp(Tk):
             '\n\n\nTransmission parameters\n\n'
             f'{indentate(str(self.transmission))}'
         )
-        self.show_next_frame()
         self.show_action_lines()
+        self.auto_update_frames()
 
     def next_frame(self) -> None:
-        self.show_next_frame()
-        self.break_loop()
+        self.clock.inc()
+        for i in range(2):
+            self.show_gear(i)
+        self.toolbar.upd_frame_num()
+        self.show_contact_points()
+        self.show_rack()
 
     def pause(self, event: Optional[KeyEvent] = None) -> None:
         self.break_loop()
@@ -628,21 +626,31 @@ class GearsApp(Tk):
 
     def resume(self, event: Optional[KeyEvent] = None) -> None:
         self.toolbar.resume_state()
-        self.show_next_frame()
+        self.auto_update_frames()
 
     def stop(self) -> None:
+        """Break loop, reset, and restore the initial appearance"""
         self.break_loop()
-        self.reset()
+        self.active_mode = False
+        self.clock.reset()
+        [patch.remove() for patch in self.ax.patches]  # type: ignore[attr-defined]
+        [self.plot_data(line, [], []) for line in self.ax.lines]  # type: ignore[attr-defined, arg-type, func-returns-value] # noqa: E501
+        self.toolbar.reset_state()
+        self.inputs.input_callback()
+
+    def save_text(self) -> None:
+        """Save the data tab content to a file."""
+        filepath = filedialog.asksaveasfilename(
+            filetypes=[('txt file', '.txt')], defaultextension='.txt', initialfile='params.txt')
+        if filepath in [tuple(), '']:  # No filepath given
+            return
+        with open(filepath, 'w') as output_file:
+            output_file.write(self.txt.get("1.0", "end-1c"))
 
     # Helpers
-    def show_next_frame(self) -> None:
-        self.clock.inc()
-        for i in range(2):
-            self.show_gear(i)
-        self.toolbar.upd_frame_num()
-        self.show_contact_points()
-        self.show_rack()
-        self.after_id = self.after(self.delay_ms, self.show_next_frame)
+    def auto_update_frames(self) -> None:
+        self.next_frame()
+        self.after_id = self.after(self.delay_ms, self.auto_update_frames)
 
     def break_loop(self) -> None:
         """Stop circulating frames"""
@@ -650,24 +658,9 @@ class GearsApp(Tk):
             self.after_cancel(self.after_id)
             self.after_id = None
 
-    def reset(self) -> None:
-        """Restore initial appearance"""
-        self.active_mode = False
-        self.clock.reset()
-        [patch.remove() for patch in self.ax.patches]  # type: ignore[attr-defined]
-        [self.plot_data(line, [], []) for line in self.ax.lines]  # type: ignore[attr-defined, arg-type, func-returns-value] # noqa: E501
-        self.toolbar.reset_state()
-
     def text_msg(self, msg: str) -> None:
-        self.txt.configure(state='normal')
+        """Print some message in the data tab."""
+        self.txt.configure(state=NORMAL)
         self.txt.delete(1.0, END)
         self.txt.insert(END, msg)
-        self.txt.configure(state='disabled')
-
-    def save_text(self) -> None:
-        filepath = filedialog.asksaveasfilename(
-            filetypes=[('txt file', '.txt')], defaultextension='.txt', initialfile='params.txt')
-        if filepath in [tuple(), '']:  # No filepath given
-            return
-        with open(filepath, 'w') as output_file:
-            output_file.write(self.txt.get("1.0", "end-1c"))
+        self.txt.configure(state=DISABLED)

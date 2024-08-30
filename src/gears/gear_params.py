@@ -1,6 +1,7 @@
 import numpy as np
 
-from .helpers import sci_round
+from .helpers import replace_batch
+from .helpers import round_float_only
 
 STANDARD_PRESSURE_ANGLE = np.deg2rad(20)
 STANDARD_ADDENDUM_COEF = 1
@@ -20,7 +21,7 @@ class GearParams:
             module: Gear module, mm.
             pressure_angle: Pressure angle, rad.
             ad_coef: Addendum coefficient, i.e. addendum / module.
-            de_coef: Dedendum coefficient, i.e. dendum / module.
+            de_coef: Dedendum coefficient, i.e. dedendum / module.
         """
         self.tooth_num = tooth_num
         self.module = module
@@ -28,8 +29,10 @@ class GearParams:
         self.ad_coef = ad_coef
         self.de_coef = de_coef
 
-        self.attrs_to_print = ['pitch_diameter', 'outside_diameter', 'root_diameter', 'base_diameter', 'addendum',
-                               'dedendum']
+        self.attrs_to_print = [('tooth_num', ''), ('module', ''), ('pressure_angle', 'deg'), ('ad_coef', ''),
+                               ('de_coef', ''), ('pitch_diameter', 'mm'), ('outside_diameter', 'mm'),
+                               ('root_diameter', 'mm'), ('base_diameter', 'mm'), ('addendum', 'mm'), ('dedendum', 'mm')]
+        self.str_to_replace = [('_', ' '), ('ad coef', 'addendum coeficient'), ('de coef', 'dedendum coeficient')]
 
         self._calc_pitch_diameter()
         self._calc_addendum()
@@ -69,12 +72,8 @@ class GearParams:
         self.circular_pitch = self.module * np.pi
 
     def __str__(self) -> str:
-        output = (
-            f'tooth_num = {self.tooth_num}\n'
-            f'module = {self.module}\n'
-            f'pressure_angle = {sci_round(np.rad2deg(self.pressure_angle), 6)} deg\n'
-            f'addendum coeficient = {self.ad_coef}\n'
-            f'dedendum coeficient = {self.de_coef}\n'
-        )
-        output += '\n'.join([f'{attr} = {sci_round(getattr(self, attr), 6)} mm' for attr in self.attrs_to_print])
+        output = '\n'.join([f'{replace_batch(attr, self.str_to_replace).ljust(21)}'
+                            f'{str(round_float_only(getattr(self, attr), 6)).ljust(10)}'
+                            f'{unit}'
+                            for attr, unit in self.attrs_to_print])
         return output

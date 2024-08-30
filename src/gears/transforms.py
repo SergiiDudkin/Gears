@@ -6,8 +6,6 @@ import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import interp1d  # type: ignore[import-untyped]
 
-from .helpers import stack_curves
-
 ArrOrNumG = TypeVar('ArrOrNumG', np.ndarray, float)
 
 
@@ -147,20 +145,3 @@ def equidistant(func: Callable, t_lims: tuple[float, float], step: float, tolera
         print('WARNING! equidistant: Number of iteration exceeded the limit.')
 
     return points
-
-
-def populate_circ(in_x: npt.NDArray, in_y: npt.NDArray, num: int) -> npt.NDArray:
-    """
-    Multiply points and place them around the origin.
-
-    Args:
-        in_x: Points, x values.
-        in_y: Points, y values.
-        num: Number of copies, including the original one.
-
-    Returns:
-        Resulting x and y values respectively.
-    """
-    angle_step = 2 * np.pi / num
-    curves = [rotate(in_x, in_y, angle_step * i) for i in range(num)]
-    return stack_curves(*curves)

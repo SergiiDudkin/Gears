@@ -24,13 +24,11 @@ from .helpers import bool_to_sign
 from .helpers import Clock
 from .helpers import sci_round
 from .helpers import seedrange
-from .helpers import stack_curves
 from .helpers import upd_xy_lims
 from .transforms import cartesian_to_polar
 from .transforms import equidistant
 from .transforms import mirror
 from .transforms import polar_to_cartesian
-from .transforms import populate_circ
 from .transforms import rotate
 
 RESOLUTION = 0.1
@@ -47,6 +45,9 @@ class HalfTooth(GearParams):
                  profile_shift_coef: float = 0, cutter_teeth_num: int = 0, resolution: float = RESOLUTION,
                  tolerance: float = TOLERANCE) -> None:
         super().__init__(tooth_num, module, pressure_angle, ad_coef, de_coef)
+        self.attrs_to_print += [('is_tooth_undercut', '')]
+        self.str_to_replace += [('is tooth undercut', 'tooth undercut')]
+
         self.cutter_teeth_num = cutter_teeth_num
         self.profile_shift_coef = profile_shift_coef
         self.resolution = resolution
@@ -245,7 +246,6 @@ class HalfTooth(GearParams):
 
     def __str__(self) -> str:
         output = super().__str__()
-        output += f'\ntooth undercut = {self.is_tooth_undercut}'
         curves_data = self.get_curves_equations()
         for curve_name in ('involute', 'epitrochoid', 'outside circle', 'root circle'):
             curve = curves_data[curve_name]
@@ -357,6 +357,12 @@ class GearSector:
         return self.get_sector_profile(self.sec_st, self.sec_en, (ang_step * self.clock.i + self.rot_ang) * self.dir)
 
     def get_limits(self) -> tuple[float, float, float, float]:
+        """
+        Get rectangular plot limits.
+
+        Returns:
+            min_x, min_y, max_x, max_y
+        """
         xy_lims = (float('inf'), float('inf'), float('-inf'), float('-inf'))
         for ang in (self.sec_st, self.sec_en):
             for rad in (self.ht0.root_radius, self.ht0.outside_radius):
@@ -497,3 +503,33 @@ class Rack:
         data[:, i_en] = lineline_intersec(x_es[i_en - 1], y_es[i_en - 1], x_es[i_en], y_es[i_en],
                                           0, self.en, 1, self.en)
         return data[:, i_st - 1: i_en + 1]
+
+
+def stack_curves(*curves) -> npt.NDArray:
+    """
+    Joins the sequence of curves.
+
+    Args:
+        *curves: A curve is 2d array of points [[x_es...], [y_es...]].
+
+    Returns:
+        Stacked curves. Terminal points of adjacent curves are supposed to be the same, so the duplicates are removed.
+    """
+    return np.hstack(tuple([line[:, 1:] if idx else line for idx, line in enumerate(curves)]))
+
+
+def populate_circ(in_x: npt.NDArray, in_y: npt.NDArray, num: int) -> npt.NDArray:
+    """
+    Multiply points and place them around the origin.
+
+    Args:
+        in_x: Points, x values.
+        in_y: Points, y values.
+        num: Number of copies, including the original one.
+
+    Returns:
+        Resulting x and y values respectively.
+    """
+    angle_step = 2 * np.pi / num
+    curves = [rotate(in_x, in_y, angle_step * i) for i in range(num)]
+    return stack_curves(*curves)
