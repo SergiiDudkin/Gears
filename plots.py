@@ -12,10 +12,11 @@ def simple_plot(x_vals, y_vals, title='Figure 1', marker=None, markersize=None):
     plt.show()
 
 
-def multiple_plot(data):
+def multiple_plot(data, title='Figure 1', marker=None, markersize=None):
     # Build plot
     for (x_vals, y_vals), label in data:
-        plt.plot(x_vals, y_vals, linewidth=1, label=label)
+        plt.plot(x_vals, y_vals, linewidth=1, label=label, marker=marker, markersize=markersize)
+    plt.get_current_fig_manager().set_window_title(title)
     plt.legend(loc='best', fancybox=False, fontsize='medium')
     fig = plt.figure(1)
     fig.set_tight_layout(True)
