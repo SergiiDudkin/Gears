@@ -33,7 +33,6 @@ from tkinter import Widget
 from tkinter import X
 from tkinter import Y
 from typing import Callable
-from typing import cast
 from typing import Optional
 
 import numpy as np
