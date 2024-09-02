@@ -93,7 +93,7 @@ class ToolbarPlayer(NavigationToolbar2Tk):
         self.reset_state()
 
     def set_btn_img(self, btn: Button, img: str) -> None:
-        btn.config(image=img)
+        btn._image_file = img  # type: ignore[attr-defined]
         ToolbarPlayer._set_image_for_button(self, btn)
 
     def pause_state(self) -> None:
