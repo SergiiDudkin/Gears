@@ -92,23 +92,23 @@ class ToolbarPlayer(NavigationToolbar2Tk):
 
         self.reset_state()
 
-    def set_btn_img(self, btn, img):
-        btn._image_file = img
+    def set_btn_img(self, btn: Button, img: str) -> None:
+        btn.config(image=img)
         ToolbarPlayer._set_image_for_button(self, btn)
 
-    def pause_state(self):
+    def pause_state(self) -> None:
         self.play_btn.config(command=self.callback_resume)
         self.set_btn_img(self.play_btn, self.play_img)
         self.next_btn.config(state=NORMAL)
         self.state = State.PAUSE
 
-    def resume_state(self):
+    def resume_state(self) -> None:
         self.next_btn.config(state=DISABLED)
         self.play_btn.config(command=self.callback_pause)
         self.set_btn_img(self.play_btn, self.pause_img)
         self.state = State.RESUME
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self.play_btn.config(command=self.callback_play)
         self.set_btn_img(self.play_btn, self.play_img)
         self.stop_btn.config(state=DISABLED)
@@ -116,20 +116,20 @@ class ToolbarPlayer(NavigationToolbar2Tk):
         self.cnt_lbl['text'] = ''
         self.state = State.RESET
 
-    def play_state(self):
+    def play_state(self) -> None:
         self.stop_btn.config(state=NORMAL)
         self.play_btn.config(command=self.callback_pause)
         self.set_btn_img(self.play_btn, self.pause_img)
         self.state = State.PLAY
 
-    def upd_frame_num(self):
+    def upd_frame_num(self) -> None:
         self.cnt_lbl['text'] = f'#{self.clock.i}'
 
-    def activate(self):
+    def activate(self) -> None:
         if self.state == State.RESET:
             self.play_btn.config(state=NORMAL)
 
-    def deactivate(self):
+    def deactivate(self) -> None:
         if self.state == State.RESET:
             self.play_btn.config(state=DISABLED)
 
