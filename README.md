@@ -49,8 +49,8 @@ with another parameters, first click the __STOP__ button ![Stop button](src/gear
 Using the dropdown view menu, the plot components can be displayed or hidden.
 
 ## Sidebar
-Invalid input data is marked with pink `#fca7b8` background. User cannot start new simulation with invalid data (the
-[Play button](src/gears/images/play.png) is disabled).
+Invalid input data is marked with pink background. User cannot start new simulation with invalid data (the
+[__PLAY__](src/gears/images/play.png) button is disabled).
 
 ### Common
 Сhoiсe of the cutting tool affects the shape of epitrochoid. To avoid pinion tooth undercut (find it in the __Data__
@@ -58,7 +58,7 @@ tab), select the proper
 _Profile shift coef_. If to click __Up__ and __Down__ buttons, addendums and dedendums instantly follow changes of
 _Profile shift coef_. However, if the later should be changed alone, please enter the value from the keyboard.
 
-### Gear A or B
+### Gear A / B
 If _dedendum A_ equals _addendum B_ and vice versa (default settings), there is the tightest possible contact between
 gears, so then their corners touch epitrochoids of the mating gear. In practical machinery, some extra value is added
 to the dedendum.

@@ -69,6 +69,7 @@ class ToolbarPlayer(NavigationToolbar2Tk):
     def __init__(self, canvas: FigureCanvasTkAgg, window: Widget, callback_play: Callable[[], None],
                  callback_next_frame: Callable[[], None], callback_pause: Callable[[], None],
                  callback_resume: Callable[[], None], callback_stop: Callable[[], None]) -> None:
+        self.canvas = canvas
         self.callback_play = callback_play
         self.callback_pause = callback_pause
         self.callback_resume = callback_resume
@@ -132,6 +133,11 @@ class ToolbarPlayer(NavigationToolbar2Tk):
     def deactivate(self) -> None:
         if self.state == State.RESET:
             self.play_btn.config(state=DISABLED)
+
+    def save_figure(self, *args):
+        self.canvas.figure.set_facecolor('#ffffff00')
+        super().save_figure(*args)
+        self.canvas.figure.set_facecolor(self.cget("background"))
 
 
 class InputWidgetValidatorMixin():
