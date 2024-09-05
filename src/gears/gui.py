@@ -275,12 +275,12 @@ class InputFrame(Frame):
         self.tooth_num0.grid(row=0, column=1, padx=2, pady=2, sticky=E)
         self.tooth_num0.insert(END, '40')
 
-        Label(params0_frame, text='Addendum').grid(row=1, column=0, padx=2, pady=2, sticky=W)
+        Label(params0_frame, text='Addendum coef').grid(row=1, column=0, padx=2, pady=2, sticky=W)
         self.ad_coef0 = EntryValid(params0_frame, self.input_callback, check_pos_finite, width=6, justify='right')
         self.ad_coef0.grid(row=1, column=1, padx=2, pady=2, sticky=E)
         self.ad_coef0.insert(END, '1')
 
-        Label(params0_frame, text='Dedendum').grid(row=2, column=0, padx=2, pady=2, sticky=W)
+        Label(params0_frame, text='Dedendum coef').grid(row=2, column=0, padx=2, pady=2, sticky=W)
         self.de_coef0 = EntryValid(params0_frame, self.input_callback, check_pos_finite, width=6, justify='right')
         self.de_coef0.grid(row=2, column=1, padx=2, pady=2, sticky=E)
         self.de_coef0.insert(END, '1')
@@ -296,18 +296,17 @@ class InputFrame(Frame):
         self.tooth_num1.grid(row=0, column=1, padx=2, pady=2, sticky=E)
         self.tooth_num1.insert(END, '40')
 
-        Label(params1_frame, text='Addendum').grid(row=1, column=0, padx=2, pady=2, sticky=W)
+        Label(params1_frame, text='Addendum coef').grid(row=1, column=0, padx=2, pady=2, sticky=W)
         self.ad_coef1 = EntryValid(params1_frame, self.input_callback, check_pos_finite, width=6, justify='right')
         self.ad_coef1.grid(row=1, column=1, padx=2, pady=2, sticky=E)
         self.ad_coef1.insert(END, '1')
 
-        Label(params1_frame, text='Dedendum').grid(row=2, column=0, padx=2, pady=2, sticky=W)
+        Label(params1_frame, text='Dedendum coef').grid(row=2, column=0, padx=2, pady=2, sticky=W)
         self.de_coef1 = EntryValid(params1_frame, self.input_callback, check_pos_finite, width=6, justify='right')
         self.de_coef1.grid(row=2, column=1, padx=2, pady=2, sticky=E)
         self.de_coef1.insert(END, '1')
 
         self.input_fields = get_entry_valid_recur(self)
-        # self.cutter_callback()
 
     # Input callbacks
     def input_callback(self) -> None:

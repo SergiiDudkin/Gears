@@ -215,30 +215,30 @@ class HalfTooth(GearParams):
     def get_curves_equations(self) -> dict[str, dict[str, Any]]:
         return {
             'involute': {
-                'x': 'r * (np.cos(t_) + t * np.sin(t_))',
-                'y': 'r * (np.sin(t_) - t * np.cos(t_))',
+                'x': 'r * (cos(t_) + t * sin(t_))',
+                'y': 'r * (sin(t_) - t * cos(t_))',
                 't_': 't + a0',
                 'params': self.involute_params,
                 'lims': self.involute_lims
             },
             'epitrochoid': {
-                'x': '(R - l) * np.cos(t_) + t * R * np.sin(t_)' if self.is_rack else
-                '(R + r) * np.cos(t_) - d * np.cos(R * t / r + t_)',
-                'y': '(R - l) * np.sin(t_) - t * R * np.cos(t_)' if self.is_rack else
-                '(R + r) * np.sin(t_) - d * np.sin(R * t / r + t_)',
+                'x': '(R - l) * cos(t_) + t * R * sin(t_)' if self.is_rack else
+                '(R + r) * cos(t_) - d * cos(R * t / r + t_)',
+                'y': '(R - l) * sin(t_) - t * R * cos(t_)' if self.is_rack else
+                '(R + r) * sin(t_) - d * sin(R * t / r + t_)',
                 't_': 't + a0',
                 'params': self.epitrochoid_params,
                 'lims': self.epitrochoid_lims
             },
             'outside circle': {
-                'x': 'r * np.cos(t)',
-                'y': 'r * np.sin(t)',
+                'x': 'r * cos(t)',
+                'y': 'r * sin(t)',
                 'params': self.outside_circle_params,
                 'lims': self.outside_circle_lims
             },
             'root circle': {
-                'x': 'r * np.cos(t)',
-                'y': 'r * np.sin(t)',
+                'x': 'r * cos(t)',
+                'y': 'r * sin(t)',
                 'params': self.root_circle_params,
                 'lims': self.root_circle_lims
             }

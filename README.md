@@ -9,7 +9,7 @@ deformation under load, weight, etc., depending on the needs and capabilities of
 ![Contact zoom in](Contact_zoom_in.png)
 
 # Build
-Go to the directory with ```pyproject.toml``` file and run
+Clone the repository, or download it as archive and unzip. Go to the directory with ```pyproject.toml``` file and run
 ```
 python -m build
 ```
@@ -46,19 +46,34 @@ with another parameters, first click the __STOP__ button ![Stop button](src/gear
 
 ## Menu bar
 ### View menu
-Using the dropdown view menu, the plot components can be displayed or hidden.
+Using the dropdown view menu, the plot components can be displayed or hidden:
+* Gear A
+* Gear B
+* Action line
+* Contact points
+* Rack
 
 ## Sidebar
 Invalid input data is marked with pink background. User cannot start new simulation with invalid data (the
 [__PLAY__](src/gears/images/play.png) button is disabled).
 
 ### Common
+_module_ = _pitch diameter_ / _number of tooth_. Roughly speaking, it is the size of tooth.
+
+The _pressure angle_ is the angle at the pitch point between the action line and the tangent to the pitch circle.
+
 Сhoiсe of the cutting tool affects the shape of epitrochoid. To avoid pinion tooth undercut (find it in the __Data__
 tab), select the proper
 _Profile shift coef_. If to click __Up__ and __Down__ buttons, addendums and dedendums instantly follow changes of
 _Profile shift coef_. However, if the later should be changed alone, please enter the value from the keyboard.
 
 ### Gear A / B
+The _number of teeth_ should be integer.
+
+_addendum coef_ = _addendum_ / _module_
+
+_dedendum coef_ = _dedendum_ / _module_
+
 If _dedendum A_ equals _addendum B_ and vice versa (default settings), there is the tightest possible contact between
 gears, so then their corners touch epitrochoids of the mating gear. In practical machinery, some extra value is added
 to the dedendum.
@@ -69,13 +84,25 @@ standard toolbar
 with a few extra buttons to support video. Animation can be paused ![Pause button](src/gears/images/pause.png), resumed
 ![Play button](src/gears/images/play.png), stopped ![Stop button](src/gears/images/stop.png) or scrolled manually
 ![Next button](src/gears/images/next.png) frame by
-frame.
+frame. The defauld Matplotlib buttons are:
+* Reset original view
+* Back to previous view
+* Forward to next view
+* Left button pans
+* Zoom to rectangle
+* Configure subplots
+* Save the figure
 
 ## Data tab
+The equations of the tooth curves are given in the parametric form, where _x_ and _y_ are curve point coordinates in mm,
+_t_ is the variable parameter given as a range, and _t__ is the auxiliary variable computed out of _t_. The rest is
+constants.
+
 ![Textual_data_tab](Textual_data_tab.png)
 
 Click on the __SAVE__ button to save output in the _.txt_ format.
 
 # Roadmap
 * Inner gears
+* Asymmetrical teeth
 * Bevel gears
