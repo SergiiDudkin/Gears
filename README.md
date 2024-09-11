@@ -6,7 +6,13 @@ circle) are also available. They can be used for modeling of the gears in CAD sy
 printed out by 3D printer, or used for further simulation / investigation of the mechanical properties, e.g. mechanical
 deformation under load, weight, etc., depending on the needs and capabilities of the available CAD system.
 
+__Contact zoom-in:__
+
 ![Contact zoom in](Contact_zoom_in.png)
+
+__Tooth structure:__
+
+![Tooth_structure](Tooth_structure.png)
 
 # Build
 Clone the repository, or download it as archive and unzip. Go to the directory with ```pyproject.toml``` file and run
@@ -100,7 +106,10 @@ constants.
 
 ![Textual_data_tab](Textual_data_tab.png)
 
-Click on the __SAVE__ button to save output in the _.txt_ format.
+Scroll down to see the _average contact points number_. The latter is important for the transmission quality (the
+higher, the better, but should not be lower than 1).
+
+Click on the __SAVE__ button to save output in the _.txt_ format.[README.md](..%2FChemicalStructureEditor%2FREADME.md)
 
 # Roadmap
 * Inner gears
