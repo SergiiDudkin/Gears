@@ -8,11 +8,11 @@ deformation under load, weight, etc., depending on the needs and capabilities of
 
 __Contact zoom-in:__
 
-![Contact zoom in](Contact_zoom_in.png)
+![Contact zoom in](assets/images/Contact_zoom_in.png)
 
 __Tooth structure:__
 
-![Tooth_structure](Tooth_structure.png)
+![Tooth_structure](assets/images/Tooth_structure.png)
 
 # Build
 Clone the repository, or download it as archive and unzip. Go to the directory with ```pyproject.toml``` file and run
@@ -45,7 +45,7 @@ pip uninstall gears
 # Usage
 In brief, input the gear parameters, and click the __PLAY__ button ![Play button](src/gears/images/play.png).
 
-![App, general view](App_general_view.png)
+![App, general view](assets/images/App_general_view.png)
 
 Animation will be started immediately, and the data tab is filled out with textual output. To start a new simulation
 with another parameters, first click the __STOP__ button ![Stop button](src/gears/images/stop.png).
@@ -104,7 +104,7 @@ The equations of the tooth curves are given in the parametric form, where _x_ an
 _t_ is the variable parameter given as a range, and _t__ is the auxiliary variable computed out of _t_. The rest is
 constants.
 
-![Textual_data_tab](Textual_data_tab.png)
+![Textual_data_tab](assets/images/Textual_data_tab.png)
 
 Scroll down to see the _average contact points number_. The latter is important for the transmission quality (the
 higher, the better, but should not be lower than 1).
