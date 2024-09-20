@@ -26,10 +26,11 @@ class GearParams:
         self.tooth_num = tooth_num
         self.module = module
         self.pressure_angle = pressure_angle
+        self.pressure_angle_ = np.rad2deg(pressure_angle)
         self.ad_coef = ad_coef
         self.de_coef = de_coef
 
-        self.attrs_to_print = [('tooth_num', ''), ('module', ''), ('pressure_angle', 'deg'), ('ad_coef', ''),
+        self.attrs_to_print = [('tooth_num', ''), ('module', ''), ('pressure_angle_', 'deg'), ('ad_coef', ''),
                                ('de_coef', ''), ('pitch_diameter', 'mm'), ('outside_diameter', 'mm'),
                                ('root_diameter', 'mm'), ('base_diameter', 'mm'), ('addendum', 'mm'), ('dedendum', 'mm')]
         self.str_to_replace = [('_', ' '), ('ad coef', 'addendum coeficient'), ('de coef', 'dedendum coeficient')]
