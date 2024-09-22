@@ -40,11 +40,11 @@ class HalfTooth(GearParams):
 
     min_r_cont: float  # Min radius where the involute-involute contact with the cutter takes place
 
-    def __init__(self, tooth_num: int, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
+    def __init__(self, tooth_num: int, module: float, pressure_angle_rad: float = STANDARD_PRESSURE_ANGLE,
                  ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF,
                  profile_shift_coef: float = 0, cutter_teeth_num: int = 0, resolution: float = RESOLUTION,
                  tolerance: float = TOLERANCE) -> None:
-        super().__init__(tooth_num, module, pressure_angle, ad_coef, de_coef)
+        super().__init__(tooth_num, module, pressure_angle_rad, ad_coef, de_coef)
         self.attrs_to_print += [('is_tooth_undercut', '')]
         self.str_to_replace += [('is tooth undercut', 'tooth undercut')]
 
@@ -112,7 +112,7 @@ class HalfTooth(GearParams):
         self.root_circle_lims = (-self.quater_angle, -epitrochoid_shift_ang)
 
     def _calc_shift_ang(self, radial_shift: float) -> float:
-        proj_onto_rack = radial_shift * np.tan(self.pressure_angle)
+        proj_onto_rack = radial_shift * np.tan(self.pressure_angle_rad)
         self.shift_percent = proj_onto_rack / self.circular_pitch
         return self.tooth_angle * self.shift_percent  # Shift angle
 
@@ -136,8 +136,8 @@ class HalfTooth(GearParams):
         Returns:
             Radius and angle in polar coordinate system.
         """
-        invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle)) ** 2 + self.root_radius ** 2)
-        invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / invol_epitr_rad) + self.pressure_angle
+        invol_epitr_rad = np.sqrt((self.dedendum / np.tan(self.pressure_angle_rad)) ** 2 + self.root_radius ** 2)
+        invol_epitr_angle = np.pi / 2 - np.arccos(self.root_radius / invol_epitr_rad) + self.pressure_angle_rad
         return invol_epitr_rad, invol_epitr_angle
 
     def _calc_invol_epitr(self) -> tuple[float, float]:
@@ -150,7 +150,7 @@ class HalfTooth(GearParams):
         # Solve the first triangle using the law of sines
         b = self.cutter_teeth_num * self.module / 2  # Cutting gear pitch radius
         a = b + self.dedendum
-        alpha = np.pi / 2 + self.pressure_angle
+        alpha = np.pi / 2 + self.pressure_angle_rad
         R2t = a / np.sin(alpha)  # Radius of the triangle's circumcircle times 2
         beta = np.arcsin(b / R2t)  # Angle beta is guarantied to be acute
         gamma = np.pi - alpha - beta
@@ -159,7 +159,7 @@ class HalfTooth(GearParams):
         # Solve the second triangle using the law of cosines
         c_ = c
         b_ = self.pitch_radius
-        alpha_ = np.pi / 2 - self.pressure_angle
+        alpha_ = np.pi / 2 - self.pressure_angle_rad
         a_ = np.sqrt(b_ ** 2 + c_ ** 2 - 2 * b_ * c_ * np.cos(alpha_))
         beta_ = np.arccos((a_ ** 2 + c_ ** 2 - b_ ** 2) / (2 * a_ * c_))
         invol_epitr_rad, invol_epitr_angle = a_, beta_
@@ -389,7 +389,7 @@ class Transmission:
         self.clock = Clock()
 
     def get_action_line(self) -> npt.NDArray:
-        prv_x, prv_y = rotate(0, 1, self.tooth0.pressure_angle)
+        prv_x, prv_y = rotate(0, 1, self.tooth0.pressure_angle_rad)
         res: list[float] = []
         for tooth, sign in zip([self.tooth0, self.tooth1], [-1, 1]):
             for attr in ['outside_radius', 'min_r_cont']:
@@ -429,14 +429,14 @@ class Transmission:
 class Rack:
     """Animated rack"""
 
-    def __init__(self, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
+    def __init__(self, module: float, pressure_angle_rad: float = STANDARD_PRESSURE_ANGLE,
                  ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF,
                  profile_shift_coef: float = 0) -> None:
         self.circular_pitch = module * np.pi
         self.dedendum = de_coef * module
         self.addendum = ad_coef * module
         profile_shift = profile_shift_coef * module
-        tan_pressure_angle = np.tan(pressure_angle)
+        tan_pressure_angle = np.tan(pressure_angle_rad)
         y_proj_de = (self.dedendum + profile_shift) * tan_pressure_angle
         y_proj_ad = (self.addendum - profile_shift) * tan_pressure_angle
         self.seeds = [y_proj_de - self.circular_pitch / 2, -y_proj_de, y_proj_ad, -y_proj_ad + self.circular_pitch / 2]

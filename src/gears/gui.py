@@ -339,7 +339,7 @@ class InputFrame(Frame):
         return float(self.module.strvar.get())
 
     @property
-    def pressure_angle_val(self) -> float:
+    def pressure_angle_rad_val(self) -> float:
         return np.deg2rad(float(self.pressure_angle.strvar.get()))
 
     @property
@@ -570,7 +570,7 @@ class GearsApp(Tk):
         ]):
             tooth = HalfTooth(tooth_num=self.inputs.tooth_num_vals[i],
                               module=self.inputs.module_val,
-                              pressure_angle=self.inputs.pressure_angle_val,
+                              pressure_angle_rad=self.inputs.pressure_angle_rad_val,
                               ad_coef=self.inputs.ad_coef_vals[i],
                               de_coef=self.inputs.de_coef_vals[i],
                               profile_shift_coef=self.inputs.profile_shift_coef_val * x_sign,
@@ -591,7 +591,7 @@ class GearsApp(Tk):
 
         # Rack setup
         self.rack = Rack(module=self.inputs.module_val,
-                         pressure_angle=self.inputs.pressure_angle_val,
+                         pressure_angle_rad=self.inputs.pressure_angle_rad_val,
                          ad_coef=self.teeth[1].de_coef,
                          de_coef=self.teeth[0].de_coef,
                          profile_shift_coef=self.inputs.profile_shift_coef_val)

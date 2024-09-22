@@ -11,7 +11,7 @@ STANDARD_DEDENDUM_COEF = 1.25
 class GearParams:
     """Set of gear params."""
 
-    def __init__(self, tooth_num: int, module: float, pressure_angle: float = STANDARD_PRESSURE_ANGLE,
+    def __init__(self, tooth_num: int, module: float, pressure_angle_rad: float = STANDARD_PRESSURE_ANGLE,
                  ad_coef: float = STANDARD_ADDENDUM_COEF, de_coef: float = STANDARD_DEDENDUM_COEF) -> None:
         """
         Computes the missing gear params from the given ones.
@@ -19,18 +19,18 @@ class GearParams:
         Args:
             tooth_num: Number of teeth
             module: Gear module, mm.
-            pressure_angle: Pressure angle, rad.
+            pressure_angle_rad: Pressure angle, rad.
             ad_coef: Addendum coefficient, i.e. addendum / module.
             de_coef: Dedendum coefficient, i.e. dedendum / module.
         """
         self.tooth_num = tooth_num
         self.module = module
-        self.pressure_angle = pressure_angle
-        self.pressure_angle_ = np.rad2deg(pressure_angle)
+        self.pressure_angle_rad = pressure_angle_rad
+        self.pressure_angle = np.rad2deg(pressure_angle_rad)
         self.ad_coef = ad_coef
         self.de_coef = de_coef
 
-        self.attrs_to_print = [('tooth_num', ''), ('module', ''), ('pressure_angle_', 'deg'), ('ad_coef', ''),
+        self.attrs_to_print = [('tooth_num', ''), ('module', ''), ('pressure_angle', 'deg'), ('ad_coef', ''),
                                ('de_coef', ''), ('pitch_diameter', 'mm'), ('outside_diameter', 'mm'),
                                ('root_diameter', 'mm'), ('base_diameter', 'mm'), ('addendum', 'mm'), ('dedendum', 'mm')]
         self.str_to_replace = [('_', ' '), ('ad coef', 'addendum coeficient'), ('de coef', 'dedendum coeficient')]
@@ -63,7 +63,7 @@ class GearParams:
         self.root_radius = self.root_diameter / 2
 
     def _calc_base_diameter(self) -> None:
-        self.base_diameter = self.pitch_diameter * np.cos(self.pressure_angle)
+        self.base_diameter = self.pitch_diameter * np.cos(self.pressure_angle_rad)
         self.base_radius = self.base_diameter / 2
 
     def _calc_tooth_angle(self) -> None:
