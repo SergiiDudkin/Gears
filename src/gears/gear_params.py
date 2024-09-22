@@ -74,7 +74,7 @@ class GearParams:
 
     def __str__(self) -> str:
         output = '\n'.join([f'{replace_batch(attr, self.str_to_replace).ljust(21)}'
-                            f'{str(round_float_only(getattr(self, attr), 6)).ljust(10)}'
+                            f'{str(round_float_only(getattr(self, attr), 6)).rjust(10)} '
                             f'{unit}'
                             for attr, unit in self.attrs_to_print])
         return output
